@@ -3,7 +3,7 @@ from flair.data import Corpus
 from flair.datasets import TREC_50
 from flair.models.text_classification_model import TARSClassifier
 
-#flair.device = "cuda:0"
+flair.device = "cuda:0"
 
 def main():
     trec50_label_name_map = {'ENTY:sport': 'question about entity sport',
@@ -91,9 +91,9 @@ def main():
             if each.score > previous_best:
                 best_label = each
                 previous_best = best_label.score
-
-        if best_label.value == true.value:
-            tp += 1
+        if best_label:
+            if best_label.value == true.value:
+                tp += 1
         all += 1
 
     for sentence in corpus.test:
@@ -106,9 +106,9 @@ def main():
             if each.score > previous_best:
                 best_label = each
                 previous_best = best_label.score
-
-        if best_label.value == true.value:
-            tp += 1
+        if best_label:
+            if best_label.value == true.value:
+                tp += 1
         all += 1
 
     for sentence in corpus.dev:
@@ -121,9 +121,9 @@ def main():
             if each.score > previous_best:
                 best_label = each
                 previous_best = best_label.score
-
-        if best_label.value == true.value:
-            tp += 1
+        if best_label:
+            if best_label.value == true.value:
+                tp += 1
         all += 1
 
     print(f"Accuracy: {tp / all}")
