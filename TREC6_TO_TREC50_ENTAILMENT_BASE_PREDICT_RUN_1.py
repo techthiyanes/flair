@@ -73,7 +73,7 @@ def main():
         random.sample(ids, 3)
     """
 
-    tars = TARSClassifier.load("experiments/1_entailment_baseline/trec6_to_trec50/run_1/best_model.pt")
+    tars = TARSClassifier.load("experiments/1_entailment_baseline/trec6_to_trec50/run_1/best-model.pt")
 
     tp = 0
     all = 0
