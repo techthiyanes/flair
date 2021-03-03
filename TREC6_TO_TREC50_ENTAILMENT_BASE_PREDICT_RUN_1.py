@@ -1,22 +1,64 @@
-from sklearn import metrics
-from torch.utils.data import Dataset
-
 import flair
 from flair.data import Corpus
-from flair.datasets import TREC_50, SentenceDataset, DataLoader
+from flair.datasets import TREC_50
 from flair.models.text_classification_model import TARSClassifier
-from flair.trainers import ModelTrainer
-import random
-import torch
-import numpy as np
-from flair.training_utils import store_embeddings, Result
 
 flair.device = "cuda:0"
 
 def main():
-    # 2. get the corpus
-    corpus: Corpus = TREC_50()
-    label_dictionary = corpus.make_label_dictionary()
+    trec50_label_name_map = {'ENTY:sport': 'question about entity sport',
+                             'ENTY:dismed': 'question about entity diseases medicine',
+                             'LOC:city': 'question about location city',
+                             'DESC:reason': 'question about description reasons',
+                             'NUM:other': 'question about number other',
+                             'LOC:state': 'question about location state',
+                             'NUM:speed': 'question about number speed',
+                             'NUM:ord': 'question about number order ranks',
+                             'ENTY:event': 'question about entity event',
+                             'ENTY:substance': 'question about entity element substance',
+                             'NUM:perc': 'question about number percentage fractions',
+                             'ENTY:product': 'question about entity product',
+                             'ENTY:animal': 'question about entity animal',
+                             'DESC:manner': 'question about description manner of action',
+                             'ENTY:cremat': 'question about entity creative pieces inventions books',
+                             'ENTY:color': 'question about entity color',
+                             'ENTY:techmeth': 'question about entity technique method',
+                             'NUM:dist': 'question about number distance measure',
+                             'NUM:weight': 'question about number weight',
+                             'LOC:mount': 'question about location mountains',
+                             'HUM:title': 'question about person title',
+                             'HUM:gr': 'question about person group organization of persons',
+                             'HUM:desc': 'question about person description',
+                             'ABBR:abb': 'question about abbreviation abbreviation',
+                             'ENTY:currency': 'question about entity currency',
+                             'DESC:def': 'question about description definition',
+                             'NUM:code': 'question about number code',
+                             'LOC:other': 'question about location other',
+                             'ENTY:other': 'question about entity other',
+                             'ENTY:body': 'question about entity body organ',
+                             'ENTY:instru': 'question about entity musical instrument',
+                             'ENTY:termeq': 'question about entity term equivalent',
+                             'NUM:money': 'question about number money prices',
+                             'NUM:temp': 'question about number temperature',
+                             'LOC:country': 'question about location country',
+                             'ABBR:exp': 'question about abbreviation expression',
+                             'ENTY:symbol': 'question about entity symbol signs',
+                             'ENTY:religion': 'question about entity religion',
+                             'HUM:ind': 'question about person individual',
+                             'ENTY:letter': 'question about entity letters characters',
+                             'NUM:date': 'question about number date',
+                             'ENTY:lang': 'question about entity language',
+                             'ENTY:veh': 'question about entity vehicle',
+                             'NUM:count': 'question about number count',
+                             'ENTY:word': 'question about entity word special property',
+                             'NUM:period': 'question about number period lasting time',
+                             'ENTY:plant': 'question about entity plant',
+                             'ENTY:food': 'question about entity food',
+                             'NUM:volsize': 'question about number volume size',
+                             'DESC:desc': 'question about description description'
+                             }
+    corpus: Corpus = TREC_50(label_name_map=trec50_label_name_map)
+
     """
     step1 = [(x.labels[0].value, id) for id, x in enumerate(corpus.train.dataset.sentences)]
     step2 = {}
@@ -32,101 +74,57 @@ def main():
     """
 
     # 3. create a TARS classifier
-    #tars = TARSClassifier.load("experiments/1_entailment_baseline/trec6_to_trec50/run_1/0_examples")
+    #tars = TARSClassifier.load("experiments/1_entailment_baseline/trec6_to_trec50/run_1/best_model.pt")
     tars = TARSClassifier.load("tars-base")
-    tars.add_and_switch_to_new_task("TREC_50", label_dictionary=corpus.make_label_dictionary())
 
-    if not isinstance(corpus.train, Dataset):
-        sentences = SentenceDataset(corpus.train)
-    else:
-        sentences = corpus.train
-    data_loader = DataLoader(sentences, num_workers=6)
+    tp = 0
+    all = 0
+    classes = [key for key in trec50_label_name_map.values()]
 
-    # use scikit-learn to evaluate
-    y_true = []
-    y_pred = []
+    for sentence in corpus.train:
+        tars.predict_zero_shot(sentence, classes)
+        true = sentence.get_labels("class")[0]
+        predictions = sentence.get_labels("label")
+        previous_best = 0
+        for each in predictions:
+            if each.score > previous_best:
+                best_label = each
+                previous_best = best_label.score
 
-    with torch.no_grad():
+        if best_label.value == true.value:
+            tp += 1
+        all += 1
 
-        for batch in data_loader:
+    for sentence in corpus.test:
+        tars.predict_zero_shot(sentence, classes)
+        true = sentence.get_labels("class")[0]
+        predictions = sentence.get_labels("label")
+        previous_best = 0
+        for each in predictions:
+            if each.score > previous_best:
+                best_label = each
+                previous_best = best_label.score
 
-            # remove previously predicted labels
-            [sentence.remove_labels('predicted') for sentence in batch]
+        if best_label.value == true.value:
+            tp += 1
+        all += 1
 
-            # get the gold labels
-            true_values_for_batch = [sentence.get_labels("class") for sentence in batch]
+    for sentence in corpus.dev:
+        tars.predict_zero_shot(sentence, classes)
+        true = sentence.get_labels("class")[0]
+        predictions = sentence.get_labels("label")
+        previous_best = 0
+        for each in predictions:
+            if each.score > previous_best:
+                best_label = each
+                previous_best = best_label.score
 
-            # predict for batch
-            tars.predict(batch,
-                        embedding_storage_mode='gpu',
-                        label_name='predicted')
+        if best_label.value == true.value:
+            tp += 1
+        all += 1
 
-            # get the predicted labels
-            predictions = [sentence.get_labels('predicted') for sentence in batch]
-
-            for predictions_for_sentence, true_values_for_sentence in zip(
-                    predictions, true_values_for_batch
-            ):
-
-                true_values_for_sentence = [label.value for label in true_values_for_sentence]
-                predictions_for_sentence = [label.value for label in predictions_for_sentence]
-
-                y_true_instance = np.zeros(len(label_dictionary), dtype=int)
-                for i in range(len(label_dictionary)):
-                    if label_dictionary.get_item_for_index(i) in true_values_for_sentence:
-                        y_true_instance[i] = 1
-                y_true.append(y_true_instance.tolist())
-
-                y_pred_instance = np.zeros(len(label_dictionary), dtype=int)
-                for i in range(len(label_dictionary)):
-                    if label_dictionary.get_item_for_index(i) in predictions_for_sentence:
-                        y_pred_instance[i] = 1
-                y_pred.append(y_pred_instance.tolist())
-
-            store_embeddings(batch, 'gpu')
-
-        # remove predicted labels
-        for sentence in sentences:
-            sentence.annotation_layers['predicted'] = []
-
-        # make "classification report"
-        target_names = []
-        for i in range(len(label_dictionary)):
-            target_names.append(label_dictionary.get_item_for_index(i))
-        classification_report = metrics.classification_report(y_true, y_pred, digits=4,
-                                                              target_names=target_names, zero_division=0)
-
-        # get scores
-        micro_f_score = round(metrics.fbeta_score(y_true, y_pred, beta=1.0, average='micro', zero_division=0),
-                              4)
-        accuracy_score = round(metrics.accuracy_score(y_true, y_pred), 4)
-        macro_f_score = round(metrics.fbeta_score(y_true, y_pred, beta=1.0, average='macro', zero_division=0),
-                              4)
-        precision_score = round(metrics.precision_score(y_true, y_pred, average='macro', zero_division=0), 4)
-        recall_score = round(metrics.recall_score(y_true, y_pred, average='macro', zero_division=0), 4)
-
-        detailed_result = (
-                "\nResults:"
-                f"\n- F-score (micro) {micro_f_score}"
-                f"\n- F-score (macro) {macro_f_score}"
-                f"\n- Accuracy {accuracy_score}"
-                '\n\nBy class:\n' + classification_report
-        )
-
-        log_header = "PRECISION\tRECALL\tF1\tACCURACY"
-        log_line = f"{precision_score}\t" \
-                   f"{recall_score}\t" \
-                   f"{macro_f_score}\t" \
-                   f"{accuracy_score}"
-
-        result = Result(
-            main_score=micro_f_score,
-            log_line=log_line,
-            log_header=log_header,
-            detailed_results=detailed_result,
-        )
-
-        print(accuracy_score)
+    print(f"Accuracy: {tp / all}")
+    print(f"TP:{tp} out of {all}.")
 
 
 if __name__ == "__main__":
