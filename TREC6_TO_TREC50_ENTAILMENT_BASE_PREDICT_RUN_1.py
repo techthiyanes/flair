@@ -86,13 +86,14 @@ def main():
         true = sentence.get_labels("class")[0]
         predictions = sentence.get_labels("label")
         previous_best = 0
-        for each in predictions:
-            if each.score > previous_best:
-                best_label = each
-                previous_best = best_label.score
+        if len(predictions) != 0:
+            for each in predictions:
+                if each.score > previous_best:
+                    best_label = each
+                    previous_best = best_label.score
 
-        if best_label.value == true.value:
-            tp += 1
+            if best_label.value == true.value:
+                tp += 1
         all += 1
 
     for sentence in corpus.test:
