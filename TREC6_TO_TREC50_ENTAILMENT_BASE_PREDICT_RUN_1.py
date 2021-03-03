@@ -3,7 +3,7 @@ from flair.data import Corpus
 from flair.datasets import TREC_50
 from flair.models.text_classification_model import TARSClassifier
 
-flair.device = "cuda:0"
+#flair.device = "cuda:0"
 
 def main():
     trec50_label_name_map = {'ENTY:sport': 'question about entity sport',
@@ -73,9 +73,7 @@ def main():
         random.sample(ids, 3)
     """
 
-    # 3. create a TARS classifier
-    #tars = TARSClassifier.load("experiments/1_entailment_baseline/trec6_to_trec50/run_1/best_model.pt")
-    tars = TARSClassifier.load("tars-base")
+    tars = TARSClassifier.load("experiments/1_entailment_baseline/trec6_to_trec50/run_1/best_model.pt")
 
     tp = 0
     all = 0
