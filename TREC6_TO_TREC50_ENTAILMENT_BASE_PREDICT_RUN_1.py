@@ -3,7 +3,7 @@ from flair.data import Corpus
 from flair.datasets import TREC_50
 from flair.models.text_classification_model import TARSClassifier
 
-flair.device = "cuda:0"
+#flair.device = "cuda:0"
 
 def main():
     trec50_label_name_map = {'ENTY:sport': 'question about entity sport',
@@ -86,14 +86,14 @@ def main():
         true = sentence.get_labels("class")[0]
         predictions = sentence.get_labels("label")
         previous_best = 0
-        if len(predictions) != 0:
-            for each in predictions:
-                if each.score > previous_best:
-                    best_label = each
-                    previous_best = best_label.score
+        best_label = None
+        for each in predictions:
+            if each.score > previous_best:
+                best_label = each
+                previous_best = best_label.score
 
-            if best_label.value == true.value:
-                tp += 1
+        if best_label.value == true.value:
+            tp += 1
         all += 1
 
     for sentence in corpus.test:
@@ -101,6 +101,7 @@ def main():
         true = sentence.get_labels("class")[0]
         predictions = sentence.get_labels("label")
         previous_best = 0
+        best_label = None
         for each in predictions:
             if each.score > previous_best:
                 best_label = each
@@ -115,6 +116,7 @@ def main():
         true = sentence.get_labels("class")[0]
         predictions = sentence.get_labels("label")
         previous_best = 0
+        best_label = None
         for each in predictions:
             if each.score > previous_best:
                 best_label = each
