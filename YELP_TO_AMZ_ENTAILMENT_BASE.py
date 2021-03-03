@@ -20,7 +20,7 @@ def main():
     corpus: Corpus = TREC_6(label_name_map=label_name_map)
 
     # 3. create a TARS classifier
-    tars = TARSClassifier(task_name='TREC_6', label_dictionary=corpus.make_label_dictionary(), document_embeddings="bart-large-mnli")
+    tars = TARSClassifier(task_name='TREC_6', label_dictionary=corpus.make_label_dictionary(), document_embeddings="facebook/bart-large-mnli")
 
     # 4. initialize the text classifier trainer
     trainer = ModelTrainer(tars, corpus)
