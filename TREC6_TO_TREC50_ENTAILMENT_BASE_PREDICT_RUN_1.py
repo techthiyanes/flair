@@ -11,7 +11,7 @@ import torch
 import numpy as np
 from flair.training_utils import store_embeddings, Result
 
-#flair.device = "cuda:0"
+flair.device = "cuda:0"
 
 def main():
     # 2. get the corpus
