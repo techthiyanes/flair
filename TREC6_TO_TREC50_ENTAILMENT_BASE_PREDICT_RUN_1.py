@@ -3,7 +3,7 @@ from flair.data import Corpus
 from flair.datasets import TREC_50
 from flair.models.text_classification_model import TARSClassifier
 
-#flair.device = "cuda:0"
+flair.device = "cuda:0"
 
 def main():
     trec50_label_name_map = {'ENTY:sport': 'question about entity sport',
