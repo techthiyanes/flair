@@ -107,12 +107,12 @@ def train_few_shot_model(path):
                             tp += 1
                     all += 1
 
-                with open(f"{path}/zeroshot.log", "w") as file:
+                with open(f"{path}/zeroshot2.log", "w") as file:
                     file.write(f"Accuracy: {tp / all}")
                     file.write(f"Correct predictions: {tp}")
                     file.write(f"Total labels: {all}")
 
-            else:
+            elif no_examples > 0:
                 few_shot_corpus = create_few_shot_corpus(no_examples, whole_corpus)
 
                 base_pretrained_tars.add_and_switch_to_new_task("TREC_50", label_dictionary=few_shot_corpus.make_label_dictionary())
@@ -174,5 +174,5 @@ if __name__ == "__main__":
     experiment = "1_entailment_baseline_mnli"
     task = "trec6_to_trec50"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
+    #train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
     train_few_shot_model(experiment_path)
