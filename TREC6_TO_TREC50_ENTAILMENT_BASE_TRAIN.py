@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:0"
+flair.device = "cuda:1"
 
 def train_base_model(path, document_embeddings):
     # 1. define label names in natural language since some datasets come with cryptic set of labels
@@ -164,7 +164,7 @@ def train_few_shot_model(path):
                                          'DESC:desc': 'question about description description'
                                          }
                 whole_corpus: Corpus = TREC_50(label_name_map=trec50_label_name_map)
-                
+
                 few_shot_corpus = create_few_shot_corpus(no_examples, whole_corpus)
 
                 base_pretrained_tars.add_and_switch_to_new_task("TREC_50", label_dictionary=few_shot_corpus.make_label_dictionary())
