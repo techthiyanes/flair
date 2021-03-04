@@ -7,7 +7,7 @@ import logging
 
 def main():
     path = "experiments/1_entailment_baseline_mnli/trec6_to_trec50/"
-    number_of_seen_examples = 2
+    number_of_seen_examples = 4
     experiment = f"pretrained_model_{number_of_seen_examples}_examples"
     logging_path = os.path.join(path, experiment)
     logging.basicConfig(filename=f'{logging_path}/result.log', filemode='w',
@@ -74,6 +74,8 @@ def main():
         tp = 0
         all = 0
         classes = [key for key in trec50_label_name_map.values()]
+
+        # NUR test split vom eigentlich corpus
 
         for sentence in corpus.train:
             tars.predict_zero_shot(sentence, classes, multi_label=False)
