@@ -7,7 +7,7 @@ import logging
 
 def main():
     path = "experiments/1_entailment_baseline_mnli/trec6_to_trec50/"
-    number_of_seen_examples = 1
+    number_of_seen_examples = 2
     experiment = f"pretrained_model_{number_of_seen_examples}_examples"
     logging_path = os.path.join(path, experiment)
     logging.basicConfig(filename=f'{logging_path}/result.log', filemode='w',

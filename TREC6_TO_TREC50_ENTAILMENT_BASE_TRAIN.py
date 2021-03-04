@@ -35,7 +35,7 @@ def train_base_model():
 def train_few_shot_model():
     path = "experiments/1_entailment_baseline_mnli/trec6_to_trec50/"
     model = os.path.join(path, "pretrained_model/best-model.pt")
-    number_of_seen_examples = 2
+    number_of_seen_examples = 4
 
     for run_number in range(5):
         tars = TARSClassifier.load(model)
