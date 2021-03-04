@@ -93,7 +93,7 @@ def main():
         for sentence in corpus.train:
             tars.predict_zero_shot(sentence, classes, multi_label=False)
             true = sentence.get_labels("class")[0]
-            pred = sentence.get_labels("label")
+            pred = sentence.get_labels("label")[0]
             if pred:
                 if pred.value == true.value:
                     tp += 1
@@ -102,7 +102,7 @@ def main():
         for sentence in corpus.test:
             tars.predict_zero_shot(sentence, classes, multi_label=False)
             true = sentence.get_labels("class")[0]
-            pred = sentence.get_labels("label")
+            pred = sentence.get_labels("label")[0]
             if pred:
                 if pred.value == true.value:
                     tp += 1
@@ -111,7 +111,7 @@ def main():
         for sentence in corpus.dev:
             tars.predict_zero_shot(sentence, classes, multi_label=False)
             true = sentence.get_labels("class")[0]
-            pred = sentence.get_labels("label")
+            pred = sentence.get_labels("label")[0]
             if pred:
                 if pred.value == true.value:
                     tp += 1
