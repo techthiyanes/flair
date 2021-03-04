@@ -410,6 +410,7 @@ class CSVClassificationDataset(FlairDataset):
             skip_header: bool = False,
             encoding: str = 'utf-8',
             no_class_label=None,
+            label_name_map=None,
             **fmtparams,
     ):
         """
@@ -457,6 +458,11 @@ class CSVClassificationDataset(FlairDataset):
         for column in column_name_map:
             if column_name_map[column] == "text":
                 self.text_columns.append(column)
+
+        if label_name_map:
+            for col_id, col in self.column_name_map.items():
+                if col.startswith("label"):
+                    label_col_id = col_id
 
         with open(self.path_to_file, encoding=encoding) as csv_file:
 
@@ -511,6 +517,8 @@ class CSVClassificationDataset(FlairDataset):
                     self.sentences.append(sentence)
 
                 else:
+                    if label_name_map:
+                        row[label_col_id] = label_name_map[row[label_col_id]]
                     self.raw_data.append(row)
 
                 self.total_sentence_count += 1
