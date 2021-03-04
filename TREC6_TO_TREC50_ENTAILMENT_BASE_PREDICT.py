@@ -8,13 +8,13 @@ import logging
 def main():
     path = "experiments/1_entailment_baseline_mnli/trec6_to_trec50/"
     number_of_seen_examples = 1
-    experiment = f"{number_of_seen_examples}_examples"
+    experiment = f"pretrained_model_{number_of_seen_examples}_examples"
     logging_path = os.path.join(path, experiment)
     logging.basicConfig(filename=f'{logging_path}/result.log', filemode='w',
                         format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s')
 
     for run_number in range(5):
-        model = os.path.join(path, f"pretrained_model_{number_of_seen_examples}_examples/run_{run_number}/best-model.pt")
+        model = os.path.join(path, f"{experiment}/run_{run_number}/best-model.pt")
 
         trec50_label_name_map = {'ENTY:sport': 'question about entity sport',
                                  'ENTY:dismed': 'question about entity diseases medicine',
