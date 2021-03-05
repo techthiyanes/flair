@@ -160,6 +160,6 @@ if __name__ == "__main__":
     experiment = "1_bert_baseline"
     task = "amazon_to_yelp"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bart-large-mnli")
+    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
     train_few_shot_model(experiment_path)
 
