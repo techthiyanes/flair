@@ -166,8 +166,8 @@ if __name__ == "__main__":
     # CHECK CORPORA + TASK DESCRIPTION
     # CHECK GPU EMBEDDING ALLOCATION
     path = 'experiments'
-    experiment = "1_bert_baseline"
+    experiment = "1_entailment_baseline_mnli"
     task = "yelp_to_amazon"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
     train_few_shot_model(experiment_path)
