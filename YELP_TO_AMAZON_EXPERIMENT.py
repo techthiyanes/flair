@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:0"
+flair.device = "cuda:2"
 
 def train_base_model(path, document_embeddings):
     # 1. define label names in natural language since some datasets come with cryptic set of labels
@@ -156,6 +156,12 @@ def create_few_shot_corpus(number_examples, corpus):
     return few_shot_corpus
 
 if __name__ == "__main__":
+    # TODOS
+    # CHECK CUDA ASSIGNMENT
+    # CHECK EXPERIMENT
+    # CHECK TASK
+    # CHECK DOCUMENT EMBEDDINGS
+    # CHECK CORPORA + TASK DESCRIPTION
     path = 'experiments'
     experiment = "1_bert_baseline"
     task = "yelp_to_amazon"
