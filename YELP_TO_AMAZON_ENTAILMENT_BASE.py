@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:2"
+flair.device = "cuda:0"
 import flair
 from flair.data import Corpus
 from flair.datasets import CSVClassificationCorpus
@@ -162,5 +162,5 @@ if __name__ == "__main__":
     experiment = "1_bert_baseline"
     task = "yelp_to_amazon"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
+    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
