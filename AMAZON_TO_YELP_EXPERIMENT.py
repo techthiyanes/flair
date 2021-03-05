@@ -157,9 +157,9 @@ def create_few_shot_corpus(number_examples, corpus):
 
 if __name__ == "__main__":
     path = 'experiments'
-    experiment = "1_entailment_baseline_mnli"
+    experiment = "1_bert_baseline"
     task = "amazon_to_yelp"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
+    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
 
