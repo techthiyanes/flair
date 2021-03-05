@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:0"
+flair.device = "cuda:3"
 
 def train_base_model(path, document_embeddings):
     label_name_map = {'1': 'World',
@@ -177,9 +177,9 @@ if __name__ == "__main__":
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
     path = 'experiments'
-    experiment = "1_bert_baseline"
+    experiment = "1_entailment_baseline_mnli"
     task = "agnews_to_dbpedia"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
     train_few_shot_model(experiment_path)
 
