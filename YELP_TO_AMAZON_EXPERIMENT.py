@@ -37,7 +37,7 @@ def train_base_model(path, document_embeddings):
     trainer.train(base_path=f"{path}/pretrained_model", # path to store the model artifacts
                   learning_rate=0.02, # use very small learning rate
                   mini_batch_size=4,
-                  mini_batch_chunk_size=2,
+                  mini_batch_chunk_size=1,
                   max_epochs=20,
                   embeddings_storage_mode='none')
 
