@@ -165,8 +165,8 @@ if __name__ == "__main__":
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
     path = 'experiments'
-    experiment = "1_bert_entailment"
+    experiment = "1_bert_baseline"
     task = "yelp_to_amazon"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="huggingface/distilbert-base-uncased-finetuned-mnli")
+    train_base_model(experiment_path, document_embeddings="distilbert-base-uncased")
     train_few_shot_model(experiment_path)

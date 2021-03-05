@@ -225,8 +225,8 @@ def create_few_shot_corpus(number_examples, corpus):
 
 if __name__ == "__main__":
     path = 'experiments'
-    experiment = "1_bert_entailment"
+    experiment = "1_bert_baseline"
     task = "trec6_to_trec50"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="textattack/bert-base-uncased-MNLI")
+    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
