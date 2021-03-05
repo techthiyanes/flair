@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:0"
+flair.device = "cuda:1"
 
 def train_base_model(path, document_embeddings):
     # 1. define label names in natural language since some datasets come with cryptic set of labels
@@ -38,7 +38,8 @@ def train_base_model(path, document_embeddings):
                   learning_rate=0.02, # use very small learning rate
                   mini_batch_size=16,
                   mini_batch_chunk_size=4,
-                  max_epochs=20)
+                  max_epochs=20,
+                  embeddings_storage_mode='none')
 
 def train_few_shot_model(path):
     base_pretrained_model_path = f"{path}/pretrained_model/best-model.pt"
@@ -111,7 +112,8 @@ def train_few_shot_model(path):
                               learning_rate=0.02, # use very small learning rate
                               mini_batch_size=16,
                               mini_batch_chunk_size=4,
-                              max_epochs=20)
+                              max_epochs=20,
+                              embeddings_storage_mode='none')
 
 def create_few_shot_corpus(number_examples, corpus):
 
