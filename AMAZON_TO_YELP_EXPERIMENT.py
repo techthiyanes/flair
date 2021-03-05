@@ -101,7 +101,7 @@ def train_few_shot_model(path):
 
                 few_shot_corpus = create_few_shot_corpus(no_examples, whole_corpus)
 
-                base_pretrained_tars.add_and_switch_to_new_task("TREC_50", label_dictionary=few_shot_corpus.make_label_dictionary())
+                base_pretrained_tars.add_and_switch_to_new_task("YELP", label_dictionary=few_shot_corpus.make_label_dictionary())
 
                 trainer = ModelTrainer(base_pretrained_tars, few_shot_corpus)
 
@@ -157,9 +157,9 @@ def create_few_shot_corpus(number_examples, corpus):
 
 if __name__ == "__main__":
     path = 'experiments'
-    experiment = "1_bert_baseline"
+    experiment = "1_entailment_baseline_mnli"
     task = "amazon_to_yelp"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
     train_few_shot_model(experiment_path)
 

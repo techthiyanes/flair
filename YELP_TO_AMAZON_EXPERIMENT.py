@@ -6,9 +6,7 @@ from flair.trainers import ModelTrainer
 import random
 
 flair.device = "cuda:0"
-import flair
-from flair.data import Corpus
-from flair.datasets import CSVClassificationCorpus
+
 def train_base_model(path, document_embeddings):
     # 1. define label names in natural language since some datasets come with cryptic set of labels
     label_name_map = {'1':'very negative restaurant sentiment',
@@ -159,8 +157,8 @@ def create_few_shot_corpus(number_examples, corpus):
 
 if __name__ == "__main__":
     path = 'experiments'
-    experiment = "1_bert_baseline"
+    experiment = "1_entailment_baseline_mnli"
     task = "yelp_to_amazon"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
     train_few_shot_model(experiment_path)
