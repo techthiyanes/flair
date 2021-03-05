@@ -36,8 +36,8 @@ def train_base_model(path, document_embeddings):
     # 5. start the training
     trainer.train(base_path=f"{path}/pretrained_model", # path to store the model artifacts
                   learning_rate=0.02, # use very small learning rate
-                  mini_batch_size=4,
-                  mini_batch_chunk_size=1,
+                  mini_batch_size=16,
+                  mini_batch_chunk_size=4,
                   max_epochs=20,
                   embeddings_storage_mode='none')
 
@@ -110,8 +110,8 @@ def train_few_shot_model(path):
 
                 trainer.train(base_path=outpath, # path to store the model artifacts
                               learning_rate=0.02, # use very small learning rate
-                              mini_batch_size=4,
-                              mini_batch_chunk_size=2,
+                              mini_batch_size=16,
+                              mini_batch_chunk_size=4,
                               max_epochs=20,
                               embeddings_storage_mode='none')
 
@@ -164,10 +164,9 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
-    # CHECK GPU EMBEDDING ALLOCATION
     path = 'experiments'
-    experiment = "1_entailment_baseline_mnli"
+    experiment = "1_bert_entailment"
     task = "yelp_to_amazon"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
+    train_base_model(experiment_path, document_embeddings="huggingface/distilbert-base-uncased-finetuned-mnli")
     train_few_shot_model(experiment_path)

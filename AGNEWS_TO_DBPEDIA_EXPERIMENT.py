@@ -181,9 +181,9 @@ if __name__ == "__main__":
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
     path = 'experiments'
-    experiment = "1_entailment_baseline_mnli"
+    experiment = "1_bert_entailment"
     task = "agnews_to_dbpedia"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
+    train_base_model(experiment_path, document_embeddings="textattack/bert-base-uncased-MNLI")
     train_few_shot_model(experiment_path)
 
