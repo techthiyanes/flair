@@ -34,8 +34,7 @@ def train_base_model(path, document_embeddings):
     trainer.train(base_path=f"{path}/pretrained_model", # path to store the model artifacts
                   learning_rate=0.02, # use very small learning rate
                   mini_batch_size=16,
-                  max_epochs=20, # terminate after 10 epochs
-                  embeddings_storage_mode='gpu')
+                  max_epochs=20)
 
 def train_few_shot_model(path):
     base_pretrained_model_path = f"{path}/pretrained_model/best-model.pt"
@@ -110,8 +109,7 @@ def train_few_shot_model(path):
                 trainer.train(base_path=outpath, # path to store the model artifacts
                               learning_rate=0.02, # use very small learning rate
                               mini_batch_size=16,
-                              max_epochs=20, # terminate after 10 epochs
-                              embeddings_storage_mode='gpu')
+                              max_epochs=20)
 
 def create_few_shot_corpus(number_examples, corpus):
 

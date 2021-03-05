@@ -5,33 +5,28 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:2"
+flair.device = "cuda:0"
 
 def train_base_model(path, document_embeddings):
-    # 1. define label names in natural language since some datasets come with cryptic set of labels
-    label_name_map = {'1':'very negative restaurant sentiment',
-                      '2':'negative restaurant sentiment',
-                      '3':'neutral restaurant sentiment',
-                      '4':'positive restaurant sentiment',
-                      '5':'very positive restaurant sentiment'
+    label_name_map = {'1': 'World',
+                      '2': 'Sports',
+                      '3': 'Business',
+                      '4': 'Science Technology'
                       }
-
-    # 2. get the corpus
-    column_name_map = {0: "label", 1: "text"}
-    corpus_path = f"{flair.cache_root}/datasets/yelp_review_full_csv"
-
-    corpus: Corpus = CSVClassificationCorpus(corpus_path,
-                                             column_name_map,
-                                             skip_header=False,
-                                             delimiter=',',
-                                             label_name_map=label_name_map
-                                             )
+    column_name_map = {0: "label", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
+    whole_corpus: Corpus = CSVClassificationCorpus(corpus_path,
+                                                   column_name_map,
+                                                   skip_header=False,
+                                                   delimiter=',',
+                                                   label_name_map=label_name_map
+                                                   )
 
     # 3. create a TARS classifier
-    tars = TARSClassifier(task_name='YELP', label_dictionary=corpus.make_label_dictionary(), document_embeddings=document_embeddings)
+    tars = TARSClassifier(task_name='AG_NEWS', label_dictionary=whole_corpus.make_label_dictionary(), document_embeddings=document_embeddings)
 
     # 4. initialize the text classifier trainer
-    trainer = ModelTrainer(tars, corpus)
+    trainer = ModelTrainer(tars, whole_corpus)
 
     # 5. start the training
     trainer.train(base_path=f"{path}/pretrained_model", # path to store the model artifacts
@@ -47,14 +42,25 @@ def train_few_shot_model(path):
         for run_number in range(5):
             if no_examples == 0 and run_number == 0:
                 base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
-                column_name_map = {0: "label", 2: "text"}
-                corpus_path = f"{flair.cache_root}/datasets/amazon_review_full_csv"
-                label_name_map = {'1': 'very negative product sentiment',
-                                  '2': 'negative product sentiment',
-                                  '3': 'neutral product sentiment',
-                                  '4': 'positive product sentiment',
-                                  '5': 'very positive product sentiment'
+                label_name_map = {'1': 'Company',
+                                  '2': 'Educational Institution',
+                                  '3': 'Artist',
+                                  '4': 'Athlete',
+                                  '5': 'Office Holder',
+                                  '6': 'Mean Of Transportation',
+                                  '7': 'Building',
+                                  '8': 'Natural Place',
+                                  '9': 'Village',
+                                  '10': 'Animal',
+                                  '11': 'Plant',
+                                  '12': 'Album',
+                                  '13': 'Film',
+                                  '14': 'Written Work'
                                   }
+
+                # 2. get the corpus
+                column_name_map = {0: "label", 2: "text"}
+                corpus_path = f"{flair.cache_root}/datasets/dbpedia_csv"
 
                 whole_corpus: Corpus = CSVClassificationCorpus(corpus_path,
                                                          column_name_map,
@@ -62,7 +68,6 @@ def train_few_shot_model(path):
                                                          delimiter=',',
                                                          label_name_map=label_name_map
                                                          )
-
                 tp = 0
                 all = 0
                 classes = [key for key in label_name_map.values()]
@@ -82,14 +87,25 @@ def train_few_shot_model(path):
 
             elif no_examples > 0:
                 base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
-                column_name_map = {0: "label", 2: "text"}
-                corpus_path = f"{flair.cache_root}/datasets/amazon_review_full_csv"
-                label_name_map = {'1': 'very negative product sentiment',
-                                  '2': 'negative product sentiment',
-                                  '3': 'neutral product sentiment',
-                                  '4': 'positive product sentiment',
-                                  '5': 'very positive product sentiment'
+                label_name_map = {'1': 'Company',
+                                  '2': 'Educational Institution',
+                                  '3': 'Artist',
+                                  '4': 'Athlete',
+                                  '5': 'Office Holder',
+                                  '6': 'Mean Of Transportation',
+                                  '7': 'Building',
+                                  '8': 'Natural Place',
+                                  '9': 'Village',
+                                  '10': 'Animal',
+                                  '11': 'Plant',
+                                  '12': 'Album',
+                                  '13': 'Film',
+                                  '14': 'Written Work'
                                   }
+
+                # 2. get the corpus
+                column_name_map = {0: "label", 2: "text"}
+                corpus_path = f"{flair.cache_root}/datasets/dbpedia_csv"
 
                 whole_corpus: Corpus = CSVClassificationCorpus(corpus_path,
                                                          column_name_map,
@@ -100,7 +116,7 @@ def train_few_shot_model(path):
 
                 few_shot_corpus = create_few_shot_corpus(no_examples, whole_corpus)
 
-                base_pretrained_tars.add_and_switch_to_new_task("AMAZON", label_dictionary=few_shot_corpus.make_label_dictionary())
+                base_pretrained_tars.add_and_switch_to_new_task("DBPEDIA", label_dictionary=few_shot_corpus.make_label_dictionary())
 
                 trainer = ModelTrainer(base_pretrained_tars, few_shot_corpus)
 
@@ -160,10 +176,10 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
-    # CHECK GPU EMBEDDING ALLOCATION
     path = 'experiments'
     experiment = "1_bert_baseline"
-    task = "yelp_to_amazon"
+    task = "agnews_to_dbpedia"
     experiment_path = f"{path}/{experiment}/{task}"
     train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
+
