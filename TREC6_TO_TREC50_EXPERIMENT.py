@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:3"
+flair.device = "cuda:1"
 
 def train_base_model(path, document_embeddings):
     # 1. define label names in natural language since some datasets come with cryptic set of labels
@@ -223,8 +223,8 @@ def create_few_shot_corpus(number_examples, corpus):
 
 if __name__ == "__main__":
     path = 'experiments'
-    experiment = "1_bart_entailment"
-    task = "trec6_to_trec50"
+    experiment = "1_bert_entailment"
+    task = "trec6_to_trec50_16bz"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="facebook/bart-large-mnli")
+    train_base_model(experiment_path, document_embeddings="textattack/bert-base-uncased-MNLI")
     train_few_shot_model(experiment_path)
