@@ -2,11 +2,8 @@ from datasets import load_dataset, load_metric
 from transformers import AutoTokenizer
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 import numpy as np
-import torch
 
 def main():
-
-    torch.device("cuda:1")
 
     task_to_keys = {
         "cola": ("sentence", None),
