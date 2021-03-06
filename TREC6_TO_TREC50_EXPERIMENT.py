@@ -30,7 +30,6 @@ def train_base_model(path, document_embeddings):
     trainer.train(base_path=f"{path}/pretrained_model", # path to store the model artifacts
                   learning_rate=0.02, # use very small learning rate
                   mini_batch_size=16,
-                  mini_batch_chunk_size=4,
                   max_epochs=20, # terminate after 10 epochs
                   embeddings_storage_mode='none')
 
@@ -106,10 +105,10 @@ def train_few_shot_model(path):
                             tp += 1
                     all += 1
 
-                with open(f"{path}/zeroshot2.log", "w") as file:
-                    file.write(f"Accuracy: {tp / all}")
-                    file.write(f"Correct predictions: {tp}")
-                    file.write(f"Total labels: {all}")
+                with open(f"{path}/zeroshot.log", "w") as file:
+                    file.write(f"Accuracy: {tp / all} \n")
+                    file.write(f"Correct predictions: {tp}\n")
+                    file.write(f"Total labels: {all}\n")
 
             elif no_examples > 0:
                 base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
@@ -177,7 +176,6 @@ def train_few_shot_model(path):
                 trainer.train(base_path=outpath, # path to store the model artifacts
                               learning_rate=0.02, # use very small learning rate
                               mini_batch_size=16,
-                              mini_batch_chunk_size=4,
                               max_epochs=20, # terminate after 10 epochs
                               embeddings_storage_mode='none')
 
@@ -225,8 +223,8 @@ def create_few_shot_corpus(number_examples, corpus):
 
 if __name__ == "__main__":
     path = 'experiments'
-    experiment = "1_bert_baseline"
-    task = "trec6_to_trec50"
+    experiment = "1_bert_entailment"
+    task = "trec6_to_trec50_bz16"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    train_base_model(experiment_path, document_embeddings="textattack/bert-base-uncased-MNLI")
     train_few_shot_model(experiment_path)
