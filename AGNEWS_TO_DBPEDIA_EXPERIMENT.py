@@ -73,8 +73,9 @@ def train_few_shot_model(path):
                 tp = 0
                 all = 0
                 classes = [key for key in label_name_map.values()]
-                base_pretrained_tars.predict_zero_shot(whole_corpus.test, classes, multi_label=False)
-                for sentence in whole_corpus.test:
+                test_split = [x for x in whole_corpus.test]
+                base_pretrained_tars.predict_zero_shot(test_split, classes, multi_label=False)
+                for sentence in test_split:
                     true = sentence.get_labels("class")[0]
                     pred = sentence.get_labels("label")[0]
                     if pred:
@@ -169,7 +170,11 @@ def create_few_shot_corpus(number_examples, corpus):
         dev_sentences
     )
 
-    few_shot_corpus = Corpus(train=train, dev=dev, test=corpus.test)
+    test = SentenceDataset(
+        [x for x in corpus.test]
+    )
+
+    few_shot_corpus = Corpus(train=train, dev=dev, test=test)
 
     return few_shot_corpus
 
@@ -181,9 +186,9 @@ if __name__ == "__main__":
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
     path = 'experiments'
-    experiment = "1_bert_baseline"
+    experiment = "1_bert_entailment"
     task = "agnews_to_dbpedia"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    #train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
 
