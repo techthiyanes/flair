@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:1"
+#flair.device = "cuda:1"
 
 def train_base_model(path, document_embeddings):
     label_name_map = {'1': 'World',
@@ -38,7 +38,7 @@ def train_base_model(path, document_embeddings):
 
 def train_few_shot_model(path):
     base_pretrained_model_path = f"{path}/pretrained_model/best-model.pt"
-    number_of_seen_examples = [0, 1, 2, 4, 8, 10, 100]
+    number_of_seen_examples = [1, 2, 4, 8, 10, 100]
 
     for no_examples in number_of_seen_examples:
         for run_number in range(5):
@@ -117,7 +117,7 @@ def train_few_shot_model(path):
                                                          label_name_map=label_name_map
                                                          )
 
-                few_shot_corpus = create_few_shot_corpus(no_examples, whole_corpus)
+                few_shot_corpus = create_few_shot_corpus(no_examples, whole_corpus, corpus_type="csv")
 
                 base_pretrained_tars.add_and_switch_to_new_task("DBPEDIA", label_dictionary=few_shot_corpus.make_label_dictionary())
 
@@ -132,49 +132,95 @@ def train_few_shot_model(path):
                               max_epochs=20,
                               embeddings_storage_mode='none')
 
-def create_few_shot_corpus(number_examples, corpus):
+def create_few_shot_corpus(number_examples, corpus, corpus_type = "default"):
 
-    id_label_tuples = [(x.labels[0].value, id) for id, x in enumerate(corpus.train.dataset.sentences)]
-    label_ids_mapping = {}
-    for key, id in id_label_tuples:
-        if key not in label_ids_mapping:
-            label_ids_mapping[key] = [id]
-        else:
-            label_ids_mapping[key].append(id)
+    if corpus_type == "default":
+        id_label_tuples = [(x.labels[0].value, id) for id, x in enumerate(corpus.train)]
+        label_ids_mapping = {}
+        for key, id in id_label_tuples:
+            if key not in label_ids_mapping:
+                label_ids_mapping[key] = [id]
+            else:
+                label_ids_mapping[key].append(id)
 
-    train_ids = []
-    dev_ids = []
-    for label, ids in label_ids_mapping.items():
-        if len(ids) <= (number_examples * 2):
-            samples = ids
-        else:
-            samples = random.sample(ids, number_examples * 2)
-        middle_index = len(samples) // 2
-        train_ids.extend(samples[:middle_index])
-        dev_ids.extend(samples[middle_index:])
+        train_ids = []
+        dev_ids = []
+        for label, ids in label_ids_mapping.items():
+            if len(ids) <= (number_examples * 2):
+                samples = ids
+            else:
+                samples = random.sample(ids, number_examples * 2)
+            middle_index = len(samples) // 2
+            train_ids.extend(samples[:middle_index])
+            dev_ids.extend(samples[middle_index:])
 
-    train_sentences = []
-    for id in train_ids:
-        train_sentences.append(corpus.train.dataset.sentences[id])
+        train_sentences = []
+        for id in train_ids:
+            train_sentences.append(corpus.train.dataset.sentences[id])
 
-    dev_sentences = []
-    for id in dev_ids:
-        dev_sentences.append(corpus.train.dataset.sentences[id])
+        dev_sentences = []
+        for id in dev_ids:
+            dev_sentences.append(corpus.train.dataset.sentences[id])
 
-    # training dataset consisting of four sentences (2 labeled as "food" and 2 labeled as "drink")
-    train = SentenceDataset(
-        train_sentences
-    )
+        # training dataset consisting of four sentences (2 labeled as "food" and 2 labeled as "drink")
+        train = SentenceDataset(
+            train_sentences
+        )
 
-    dev = SentenceDataset(
-        dev_sentences
-    )
+        dev = SentenceDataset(
+            dev_sentences
+        )
 
-    test = SentenceDataset(
-        [x for x in corpus.test]
-    )
+        test = SentenceDataset(
+            [x for x in corpus.test]
+        )
 
-    few_shot_corpus = Corpus(train=train, dev=dev, test=test)
+        few_shot_corpus = Corpus(train=train, dev=dev, test=test)
+
+    elif corpus_type == "csv":
+        id_label_tuples = [(x.labels[0].value, id) for id, x in enumerate(corpus.train)]
+        label_ids_mapping = {}
+        for key, id in id_label_tuples:
+            if key not in label_ids_mapping:
+                label_ids_mapping[key] = [id]
+            else:
+                label_ids_mapping[key].append(id)
+
+        train_ids = []
+        dev_ids = []
+        for label, ids in label_ids_mapping.items():
+            if len(ids) <= (number_examples * 2):
+                samples = ids
+            else:
+                samples = random.sample(ids, number_examples * 2)
+            middle_index = len(samples) // 2
+            train_ids.extend(samples[:middle_index])
+            dev_ids.extend(samples[middle_index:])
+
+        train_sentences = []
+        for id in train_ids:
+            train_sentences.append(corpus.train[id])
+
+        dev_sentences = []
+        for id in dev_ids:
+            dev_sentences.append(corpus.train[id])
+
+        train = SentenceDataset(
+            train_sentences
+        )
+
+        dev = SentenceDataset(
+            dev_sentences
+        )
+
+        test = SentenceDataset(
+            [x for x in corpus.test]
+        )
+
+        few_shot_corpus = Corpus(train=train, dev=dev, test=test)
+
+    else:
+        raise Exception("unknown corpus type.")
 
     return few_shot_corpus
 
@@ -189,6 +235,6 @@ if __name__ == "__main__":
     experiment = "1_bert_baseline"
     task = "agnews_to_dbpedia"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    #train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
 
