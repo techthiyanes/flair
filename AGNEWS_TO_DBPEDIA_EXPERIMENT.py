@@ -5,7 +5,7 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-#flair.device = "cuda:1"
+flair.device = "cuda:1"
 
 def train_base_model(path, document_embeddings):
     label_name_map = {'1': 'World',
