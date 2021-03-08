@@ -28,10 +28,6 @@ def main():
     dataset = load_dataset("glue", actual_task)
     metric = load_metric('glue', actual_task)
 
-    for split in ["train", "validation_matched", "validation_mismatched", "test_matched", "test_mismatched"]:
-        dataset[split].features["label"].num_classes = 2
-        dataset[split].features["label"].names = ["entailment", "non-entailment"]
-
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
         predictions = np.argmax(predictions, axis=1)
