@@ -178,7 +178,7 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
-    flair.device = "cuda:1"
+    flair.device = "cuda:3"
     path = 'experiments'
     experiment = "1_bert_baseline"
     task = "dbpedia_to_agnews"
