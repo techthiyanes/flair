@@ -2,7 +2,6 @@ from datasets import load_dataset, load_metric
 from transformers import AutoTokenizer
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 import numpy as np
-import torch
 
 def main():
 
@@ -18,8 +17,8 @@ def main():
         "stsb": ("sentence1", "sentence2"),
         "wnli": ("sentence1", "sentence2"),
     }
-    model_checkpoint = "mnli/checkpoint-98176"
-    actual_task = "rte"
+    model_checkpoint = "bert-base-uncased"
+    actual_task = "mnli"
     sentence1_key, sentence2_key = task_to_keys[actual_task]
     validation_key = "validation"
 
@@ -45,7 +44,8 @@ def main():
         return tokenizer(examples[sentence1_key], examples[sentence2_key], truncation=True)
 
     encoded_dataset = dataset.map(preprocess_function, batched=True)
-
+    ds = load_dataset("fever", "v1.0")
+    ds2 = load_dataset("fever", "wiki_pages")
     args = TrainingArguments(
         "mnli+rte",
         evaluation_strategy="epoch",
