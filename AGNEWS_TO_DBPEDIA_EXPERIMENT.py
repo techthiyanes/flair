@@ -178,9 +178,9 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
-    flair.device = "cuda:3"
+    flair.device = "cuda:2"
     path = 'experiments'
-    experiment = "1_bert_entailment"
+    experiment = "1_bert_baseline"
     task = "agnews_to_dbpedia"
     experiment_path = f"{path}/{experiment}/{task}"
     #train_base_model(experiment_path, document_embeddings="bert-base-uncased")

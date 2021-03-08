@@ -5,8 +5,6 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-flair.device = "cuda:2"
-
 def train_base_model(path, document_embeddings):
     label_name_map = {'1': 'Company',
                       '2': 'Educational Institution',
@@ -23,11 +21,8 @@ def train_base_model(path, document_embeddings):
                       '13': 'Film',
                       '14': 'Written Work'
                       }
-
-    # 2. get the corpus
     column_name_map = {0: "label", 2: "text"}
     corpus_path = f"{flair.cache_root}/datasets/dbpedia_csv"
-
     whole_corpus: Corpus = CSVClassificationCorpus(corpus_path,
                                                    column_name_map,
                                                    skip_header=False,
@@ -51,30 +46,42 @@ def train_base_model(path, document_embeddings):
 
 def train_few_shot_model(path):
     base_pretrained_model_path = f"{path}/pretrained_model/best-model.pt"
+    base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
+
+    label_name_map = {'1': 'World',
+                      '2': 'Sports',
+                      '3': 'Business',
+                      '4': 'Science Technology'
+                      }
+    column_name_map = {0: "label", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
+    whole_corpus: Corpus = CSVClassificationCorpus(corpus_path,
+                                                   column_name_map,
+                                                   skip_header=False,
+                                                   delimiter=',',
+                                                   label_name_map=label_name_map
+                                                   )
+
     number_of_seen_examples = [0, 1, 2, 4, 8, 10, 100]
+
+    test_split = [x for x in whole_corpus.test]
+
+    if whole_corpus.__class__.__name__ == "CSVClassificationCorpus":
+        corpus_type = "csv"
+    else:
+        corpus_type = "default"
+
+    label_ids_mapping = extract_label_ids_mapping(whole_corpus, corpus_type)
 
     for no_examples in number_of_seen_examples:
         for run_number in range(5):
             if no_examples == 0 and run_number == 0:
-                base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
-                label_name_map = {'1': 'World',
-                                  '2': 'Sports',
-                                  '3': 'Business',
-                                  '4': 'Science Technology'
-                                  }
-                column_name_map = {0: "label", 2: "text"}
-                corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
-                whole_corpus: Corpus = CSVClassificationCorpus(corpus_path,
-                                                         column_name_map,
-                                                         skip_header=False,
-                                                         delimiter=',',
-                                                         label_name_map=label_name_map
-                                                         )
+
                 tp = 0
                 all = 0
                 classes = [key for key in label_name_map.values()]
-                base_pretrained_tars.predict_zero_shot(whole_corpus.test, classes, multi_label=False)
-                for sentence in whole_corpus.test:
+                base_pretrained_tars.predict_zero_shot(test_split, classes, multi_label=False)
+                for sentence in test_split:
                     true = sentence.get_labels("class")[0]
                     pred = sentence.get_labels("label")[0]
                     if pred:
@@ -83,29 +90,15 @@ def train_few_shot_model(path):
                     all += 1
 
                 with open(f"{path}/zeroshot.log", "w") as file:
-                    file.write(f"Accuracy: {tp / all}")
-                    file.write(f"Correct predictions: {tp}")
-                    file.write(f"Total labels: {all}")
+                    file.write(f"Accuracy: {tp / all} \n")
+                    file.write(f"Correct predictions: {tp} \n")
+                    file.write(f"Total labels: {all} \n")
 
             elif no_examples > 0:
-                base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
-                label_name_map = {'1': 'World',
-                                  '2': 'Sports',
-                                  '3': 'Business',
-                                  '4': 'Science Technology'
-                                  }
-                column_name_map = {0: "label", 2: "text"}
-                corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
-                whole_corpus: Corpus = CSVClassificationCorpus(corpus_path,
-                                                         column_name_map,
-                                                         skip_header=False,
-                                                         delimiter=',',
-                                                         label_name_map=label_name_map
-                                                         )
 
-                few_shot_corpus = create_few_shot_corpus(no_examples, whole_corpus)
+                few_shot_corpus = create_few_shot_corpus(label_ids_mapping, no_examples, whole_corpus, test_split, corpus_type)
 
-                base_pretrained_tars.add_and_switch_to_new_task("AG_NEWS", label_dictionary=few_shot_corpus.make_label_dictionary())
+                base_pretrained_tars.add_and_switch_to_new_task("DBPEDIA", label_dictionary=few_shot_corpus.make_label_dictionary())
 
                 trainer = ModelTrainer(base_pretrained_tars, few_shot_corpus)
 
@@ -118,9 +111,13 @@ def train_few_shot_model(path):
                               max_epochs=20,
                               embeddings_storage_mode='none')
 
-def create_few_shot_corpus(number_examples, corpus):
+def extract_label_ids_mapping(corpus, corpus_type):
+    if corpus_type == "default":
+        id_label_tuples = [(x.labels[0].value, id) for id, x in enumerate(corpus.train.dataset.sentences)]
 
-    id_label_tuples = [(x.labels[0].value, id) for id, x in enumerate(corpus.train.dataset.sentences)]
+    elif corpus_type == "csv":
+        id_label_tuples = [(x.labels[0].value, id) for id, x in enumerate(corpus.train)]
+
     label_ids_mapping = {}
     for key, id in id_label_tuples:
         if key not in label_ids_mapping:
@@ -128,37 +125,51 @@ def create_few_shot_corpus(number_examples, corpus):
         else:
             label_ids_mapping[key].append(id)
 
-    train_ids = []
-    dev_ids = []
-    for label, ids in label_ids_mapping.items():
-        if len(ids) <= (number_examples * 2):
-            samples = ids
-        else:
-            samples = random.sample(ids, number_examples * 2)
-        middle_index = len(samples) // 2
-        train_ids.extend(samples[:middle_index])
-        dev_ids.extend(samples[middle_index:])
+    return label_ids_mapping
 
-    train_sentences = []
-    for id in train_ids:
-        train_sentences.append(corpus.train.dataset.sentences[id])
+def create_few_shot_corpus(label_ids_mapping, number_examples, corpus, test_sentences, corpus_type = "default"):
 
-    dev_sentences = []
-    for id in dev_ids:
-        dev_sentences.append(corpus.train.dataset.sentences[id])
+        train_ids = []
+        dev_ids = []
+        for label, ids in label_ids_mapping.items():
+            if len(ids) <= (number_examples * 2):
+                samples = ids
+            else:
+                samples = random.sample(ids, number_examples * 2)
+            middle_index = len(samples) // 2
+            train_ids.extend(samples[:middle_index])
+            dev_ids.extend(samples[middle_index:])
 
-    # training dataset consisting of four sentences (2 labeled as "food" and 2 labeled as "drink")
-    train = SentenceDataset(
-        train_sentences
-    )
+        train_sentences = []
+        for id in train_ids:
+            if corpus_type == "default":
+                train_sentences.append(corpus.train.dataset.sentences[id])
+            elif corpus_type == "csv":
+                train_sentences.append(corpus.train[id])
 
-    dev = SentenceDataset(
-        dev_sentences
-    )
+        dev_sentences = []
+        for id in dev_ids:
+            if corpus_type == "default":
+                dev_sentences.append(corpus.train.dataset.sentences[id])
+            elif corpus_type == "csv":
+                dev_sentences.append(corpus.train[id])
 
-    few_shot_corpus = Corpus(train=train, dev=dev, test=corpus.test)
+        # training dataset consisting of four sentences (2 labeled as "food" and 2 labeled as "drink")
+        train = SentenceDataset(
+            train_sentences
+        )
 
-    return few_shot_corpus
+        dev = SentenceDataset(
+            dev_sentences
+        )
+
+        test = SentenceDataset(
+            test_sentences
+        )
+
+        few_shot_corpus = Corpus(train=train, dev=dev, test=test)
+
+        return few_shot_corpus
 
 if __name__ == "__main__":
     # TODOS
@@ -167,10 +178,11 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
+    flair.device = "cuda:3"
     path = 'experiments'
-    experiment = "1_bert_baseline"
+    experiment = "1_bert_entailment"
     task = "dbpedia_to_agnews"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    #train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
 
