@@ -180,9 +180,9 @@ if __name__ == "__main__":
     # CHECK CORPORA + TASK DESCRIPTION
     flair.device = "cuda:3"
     path = 'experiments'
-    experiment = "1_bert_baseline"
+    experiment = "1_bert_entailment"
     task = "dbpedia_to_agnews"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
+    #train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
 
