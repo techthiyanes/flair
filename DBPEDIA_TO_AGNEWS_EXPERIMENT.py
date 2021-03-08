@@ -98,7 +98,7 @@ def train_few_shot_model(path):
 
                 few_shot_corpus = create_few_shot_corpus(label_ids_mapping, no_examples, whole_corpus, test_split, corpus_type)
 
-                base_pretrained_tars.add_and_switch_to_new_task("DBPEDIA", label_dictionary=few_shot_corpus.make_label_dictionary())
+                base_pretrained_tars.add_and_switch_to_new_task("AGNEWS", label_dictionary=few_shot_corpus.make_label_dictionary())
 
                 trainer = ModelTrainer(base_pretrained_tars, few_shot_corpus)
 
