@@ -2,6 +2,7 @@ from datasets import load_dataset, load_metric
 from transformers import AutoTokenizer
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 import numpy as np
+import torch
 
 def main():
 
@@ -71,4 +72,5 @@ def main():
     trainer.evaluate()
 
 if __name__ == "__main__":
+    torch.device = "cuda:3"
     main()
