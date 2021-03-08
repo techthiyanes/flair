@@ -17,10 +17,10 @@ def main():
         "stsb": ("sentence1", "sentence2"),
         "wnli": ("sentence1", "sentence2"),
     }
-    model_checkpoint = "bert-base-uncased"
-    actual_task = "mnli"
+    model_checkpoint = "mnli/checkpoint-98176"
+    actual_task = "rte"
     sentence1_key, sentence2_key = task_to_keys[actual_task]
-    validation_key = "validation_matched"
+    validation_key = "validation"
 
     metric_name = "accuracy"
     num_labels = 2
@@ -50,7 +50,7 @@ def main():
     encoded_dataset = dataset.map(preprocess_function, batched=True)
 
     args = TrainingArguments(
-        "mnli",
+        "mnli+rte",
         evaluation_strategy="epoch",
         learning_rate=2e-5,
         per_device_train_batch_size=16,
