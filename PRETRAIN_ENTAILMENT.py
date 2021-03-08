@@ -72,5 +72,4 @@ def main():
     trainer.evaluate()
 
 if __name__ == "__main__":
-    torch.device = "cuda:3"
     main()
