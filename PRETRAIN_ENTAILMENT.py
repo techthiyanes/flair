@@ -110,9 +110,8 @@ def create_datasets(save_files=True):
             pass
 
 def main():
-    create_datasets()
-    """
-    model_checkpoint = "mnli+rte/checkpoint-XXX"
+    #create_datasets()
+    model_checkpoint = "mnli+rte/checkpoint-780"
     dataset = load_dataset("json", data_files={"train": "train.json", "test": "test.json", "dev": "dev.json"})
     metric_name = "accuracy"
     metric = load_metric('glue', "mnli")
@@ -154,7 +153,6 @@ def main():
     trainer.train()
 
     trainer.evaluate()
-    """
 
 if __name__ == "__main__":
     main()
