@@ -3,6 +3,7 @@ from transformers import AutoTokenizer
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 import numpy as np
 import json
+import flair
 
 def create_datasets(save_files=True):
     data = load_dataset("fever", "v1.0")
@@ -112,7 +113,7 @@ def create_datasets(save_files=True):
 def main():
     #create_datasets()
     model_checkpoint = "mnli+rte/checkpoint-780"
-    dataset = load_dataset("json", data_files={"train": "train.json", "test": "test.json", "dev": "dev.json"})
+    dataset = load_dataset("json", data_files={"train": f"{flair.cache_root}/datasets/fever/train.json", "test": f"{flair.cache_root}/datasets/fever/test.json", "dev": f"{flair.cache_root}/datasets/fever/dev.json"})
     metric_name = "accuracy"
     metric = load_metric('glue', "mnli")
 
