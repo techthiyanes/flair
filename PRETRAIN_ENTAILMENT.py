@@ -20,21 +20,24 @@ def create_datasets(save_files=True):
     seen_ids = []
     for data_point in train:
         evidence_ref = data_point["evidence_wiki_url"]
-        if evidence_ref != "":
-            if data_point["id"] not in seen_ids:
-                train_json["claim"] = data_point["claim"]
-                train_json["evidence"] = wiki_lookup[evidence_ref]["text"]
-                unprocessed_label = data_point["label"]
-                if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
-                    label = 0
-                elif unprocessed_label in ["SUPPORTS"]:
-                    label = 1
-                else:
-                    print(unprocessed_label)
-                    raise Exception("unknown label.")
-                train_json["label"] = label
-                train_json["id"] = data_point["id"]
-                seen_ids.append(data_point["id"])
+        try:
+            if evidence_ref != "":
+                if data_point["id"] not in seen_ids:
+                    train_json["claim"] = data_point["claim"]
+                    train_json["evidence"] = wiki_lookup[evidence_ref]["text"]
+                    unprocessed_label = data_point["label"]
+                    if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
+                        label = 0
+                    elif unprocessed_label in ["SUPPORTS"]:
+                        label = 1
+                    else:
+                        print(unprocessed_label)
+                        raise Exception("unknown label.")
+                    train_json["label"] = label
+                    train_json["id"] = data_point["id"]
+                    seen_ids.append(data_point["id"])
+        except:
+            pass
 
     with open("train.json", "w") as outfile:
         json.dump(train_json, outfile)
@@ -44,20 +47,23 @@ def create_datasets(save_files=True):
     seen_ids = []
     for data_point in dev:
         evidence_ref = data_point["evidence_wiki_url"]
-        if evidence_ref != "":
-            if dev["id"] not in seen_ids:
-                dev_json["claim"] = data_point["claim"]
-                dev_json["evidence"] = wiki_lookup[evidence_ref]["text"]
-                unprocessed_label = data_point["label"]
-                if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
-                    label = 0
-                elif unprocessed_label in ["SUPPORTS"]:
-                    label = 1
-                else:
-                    raise Exception("unknown label.")
-                dev_json["label"] = label
-                dev_json["id"] = data_point["id"]
-                seen_ids.append(data_point["id"])
+        try:
+            if evidence_ref != "":
+                if dev["id"] not in seen_ids:
+                    dev_json["claim"] = data_point["claim"]
+                    dev_json["evidence"] = wiki_lookup[evidence_ref]["text"]
+                    unprocessed_label = data_point["label"]
+                    if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
+                        label = 0
+                    elif unprocessed_label in ["SUPPORTS"]:
+                        label = 1
+                    else:
+                        raise Exception("unknown label.")
+                    dev_json["label"] = label
+                    dev_json["id"] = data_point["id"]
+                    seen_ids.append(data_point["id"])
+        except:
+            pass
 
     with open("dev.json", "w") as outfile:
         json.dump(dev_json, outfile)
@@ -67,20 +73,23 @@ def create_datasets(save_files=True):
     seen_ids = []
     for data_point in test:
         evidence_ref = data_point["evidence_wiki_url"]
-        if evidence_ref != "":
-            if test["id"] not in seen_ids:
-                test_json["claim"] = data_point["claim"]
-                test_json["evidence"] = wiki_lookup[evidence_ref]["text"]
-                unprocessed_label = data_point["label"]
-                if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
-                    label = 0
-                elif unprocessed_label in ["SUPPORTS"]:
-                    label = 1
-                else:
-                    raise Exception("unknown label.")
-                test_json["label"] = label
-                test_json["id"] = data_point["id"]
-                seen_ids.append(data_point["id"])
+        try:
+            if evidence_ref != "":
+                if test["id"] not in seen_ids:
+                    test_json["claim"] = data_point["claim"]
+                    test_json["evidence"] = wiki_lookup[evidence_ref]["text"]
+                    unprocessed_label = data_point["label"]
+                    if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
+                        label = 0
+                    elif unprocessed_label in ["SUPPORTS"]:
+                        label = 1
+                    else:
+                        raise Exception("unknown label.")
+                    test_json["label"] = label
+                    test_json["id"] = data_point["id"]
+                    seen_ids.append(data_point["id"])
+        except:
+            pass
 
     with open("test.json", "w") as outfile:
         json.dump(test_json, outfile)
