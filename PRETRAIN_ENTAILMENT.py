@@ -5,7 +5,7 @@ import numpy as np
 import flair
 
 def main():
-    model_checkpoint = "bert-base-uncased"
+    model_checkpoint = "mnli+rte/checkpoint-780"
     dataset = load_dataset("json", data_files={"train": f"{flair.cache_root}/datasets/fever/train.jsonl", "test": f"{flair.cache_root}/datasets/fever/test.jsonl", "dev": f"{flair.cache_root}/datasets/fever/dev.jsonl"})
     metric_name = "accuracy"
     metric = load_metric('glue', "mnli")
