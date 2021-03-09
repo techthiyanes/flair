@@ -30,6 +30,7 @@ def create_datasets(save_files=True):
                 elif unprocessed_label in ["SUPPORTS"]:
                     label = 1
                 else:
+                    print(unprocessed_label)
                     raise Exception("unknown label.")
                 train_json["label"] = label
                 train_json["id"] = train["id"]
