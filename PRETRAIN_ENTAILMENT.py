@@ -19,7 +19,7 @@ def main():
     model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
 
     def preprocess_function(examples):
-        return tokenizer(examples["query"], examples["context"], truncation=True)
+        return tokenizer(examples["query"], examples["context"], truncation=True, padding=True)
 
     encoded_dataset = dataset.map(preprocess_function, batched=True)
 
