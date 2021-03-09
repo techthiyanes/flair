@@ -2,31 +2,95 @@ from datasets import load_dataset, load_metric
 from transformers import AutoTokenizer
 from transformers import AutoModelForSequenceClassification, TrainingArguments, Trainer
 import numpy as np
+import json
+
+def create_datasets(save_files=True):
+    data = load_dataset("fever", "v1.0")
+    wiki_pages = load_dataset("fever", "wiki_pages")
+    wiki_keys = wiki_pages["wikipedia_pages"]["id"]
+    wiki_text = wiki_pages["wikipedia_pages"]["text"]
+    wiki_ids = np.arange(len(wiki_keys))
+    wiki_lookup = {}
+    for key, text, id in zip(wiki_keys, wiki_text, wiki_ids):
+        wiki_lookup[key] = {"text": text,
+                            "id": id}
+
+    train = data["train"]
+    train_json = {}
+    seen_ids = []
+    for data_point in train:
+        evidence_ref = data_point["evidence_wiki_url"]
+        if evidence_ref != "":
+            if train["id"] not in seen_ids:
+                train_json["claim"] = train["claim"]
+                train_json["evidence"] = wiki_lookup[evidence_ref]["text"]
+                unprocessed_label = train["label"]
+                if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
+                    label = 0
+                elif unprocessed_label in ["SUPPORTS"]:
+                    label = 1
+                else:
+                    raise Exception("unknown label.")
+                train_json["label"] = label
+                train_json["id"] = train["id"]
+                seen_ids.append(train["id"])
+
+    with open("train.json", "w") as outfile:
+        json.dump(train_json, outfile)
+
+    dev = data["paper_dev"]
+    dev_json = {}
+    seen_ids = []
+    for data_point in dev:
+        evidence_ref = data_point["evidence_wiki_url"]
+        if evidence_ref != "":
+            if dev["id"] not in seen_ids:
+                dev_json["claim"] = dev["claim"]
+                dev_json["evidence"] = wiki_lookup[evidence_ref]["text"]
+                unprocessed_label = dev["label"]
+                if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
+                    label = 0
+                elif unprocessed_label in ["SUPPORTS"]:
+                    label = 1
+                else:
+                    raise Exception("unknown label.")
+                dev_json["label"] = label
+                dev_json["id"] = dev["id"]
+                seen_ids.append(dev["id"])
+
+    with open("dev.json", "w") as outfile:
+        json.dump(dev_json, outfile)
+
+    test = data["paper_test"]
+    test_json = {}
+    seen_ids = []
+    for data_point in test:
+        evidence_ref = data_point["evidence_wiki_url"]
+        if evidence_ref != "":
+            if test["id"] not in seen_ids:
+                test_json["claim"] = test["claim"]
+                test_json["evidence"] = wiki_lookup[evidence_ref]["text"]
+                unprocessed_label = test["label"]
+                if unprocessed_label in ["NOT ENOUGH INFO", "REFUTES"]:
+                    label = 0
+                elif unprocessed_label in ["SUPPORTS"]:
+                    label = 1
+                else:
+                    raise Exception("unknown label.")
+                test_json["label"] = label
+                test_json["id"] = test["id"]
+                seen_ids.append(test["id"])
+
+    with open("test.json", "w") as outfile:
+        json.dump(test_json, outfile)
 
 def main():
-
-    task_to_keys = {
-        "cola": ("sentence", None),
-        "mnli": ("premise", "hypothesis"),
-        "mnli-mm": ("premise", "hypothesis"),
-        "mrpc": ("sentence1", "sentence2"),
-        "qnli": ("question", "sentence"),
-        "qqp": ("question1", "question2"),
-        "rte": ("sentence1", "sentence2"),
-        "sst2": ("sentence", None),
-        "stsb": ("sentence1", "sentence2"),
-        "wnli": ("sentence1", "sentence2"),
-    }
+    create_datasets()
+    """
     model_checkpoint = "bert-base-uncased"
-    actual_task = "mnli"
-    sentence1_key, sentence2_key = task_to_keys[actual_task]
-    validation_key = "validation"
-
-    metric_name = "accuracy"
-    num_labels = 2
-
-    dataset = load_dataset("glue", actual_task)
-    metric = load_metric('glue', actual_task)
+    sentence1_key, sentence2_key = "claim", "evidence"
+    dataset = load_dataset("glue", "mnli")
+    metric = load_metric('glue', "mnli")
 
     def compute_metrics(eval_pred):
         predictions, labels = eval_pred
@@ -34,7 +98,7 @@ def main():
         return metric.compute(predictions=predictions, references=labels)
 
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-    model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=num_labels)
+    model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
 
     def preprocess_function(examples):
         if sentence2_key is None:
@@ -44,8 +108,6 @@ def main():
         return tokenizer(examples[sentence1_key], examples[sentence2_key], truncation=True)
 
     encoded_dataset = dataset.map(preprocess_function, batched=True)
-    ds = load_dataset("fever", "v1.0")
-    ds2 = load_dataset("fever", "wiki_pages")
     args = TrainingArguments(
         "mnli+rte",
         evaluation_strategy="epoch",
@@ -70,6 +132,7 @@ def main():
     trainer.train()
 
     trainer.evaluate()
+    """
 
 if __name__ == "__main__":
     main()
