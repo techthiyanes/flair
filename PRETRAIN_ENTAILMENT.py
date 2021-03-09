@@ -16,9 +16,10 @@ def create_datasets(save_files=True):
                             "id": id}
 
     train = data["train"]
-    train_json = {}
     seen_ids = []
+    firstLine = True
     for data_point in train:
+        train_json = {}
         evidence_ref = data_point["evidence_wiki_url"]
         try:
             if evidence_ref != "":
@@ -36,16 +37,21 @@ def create_datasets(save_files=True):
                     train_json["label"] = label
                     train_json["id"] = data_point["id"]
                     seen_ids.append(data_point["id"])
+
+            with open("train.json", "a") as outfile:
+                if firstLine:
+                    firstLine = False
+                else:
+                    outfile.write('\n')
+                json.dump(train_json, outfile)
         except:
             pass
 
-    with open("train.json", "w") as outfile:
-        json.dump(train_json, outfile)
-
     dev = data["paper_dev"]
-    dev_json = {}
     seen_ids = []
+    firstLine = True
     for data_point in dev:
+        dev_json = {}
         evidence_ref = data_point["evidence_wiki_url"]
         try:
             if evidence_ref != "":
@@ -62,16 +68,21 @@ def create_datasets(save_files=True):
                     dev_json["label"] = label
                     dev_json["id"] = data_point["id"]
                     seen_ids.append(data_point["id"])
+
+            with open("dev.json", "a") as outfile:
+                if firstLine:
+                    firstLine = False
+                else:
+                    outfile.write('\n')
+                json.dump(dev_json, outfile)
         except:
             pass
 
-    with open("dev.json", "w") as outfile:
-        json.dump(dev_json, outfile)
-
     test = data["paper_test"]
-    test_json = {}
+    firstLine = True
     seen_ids = []
     for data_point in test:
+        test_json = {}
         evidence_ref = data_point["evidence_wiki_url"]
         try:
             if evidence_ref != "":
@@ -88,18 +99,22 @@ def create_datasets(save_files=True):
                     test_json["label"] = label
                     test_json["id"] = data_point["id"]
                     seen_ids.append(data_point["id"])
+
+            with open("test.json", "a") as outfile:
+                if firstLine:
+                    firstLine = False
+                else:
+                    outfile.write('\n')
+                json.dump(test_json, outfile)
         except:
             pass
-
-    with open("test.json", "w") as outfile:
-        json.dump(test_json, outfile)
 
 def main():
     create_datasets()
     """
-    model_checkpoint = "bert-base-uncased"
-    sentence1_key, sentence2_key = "claim", "evidence"
-    dataset = load_dataset("glue", "mnli")
+    model_checkpoint = "mnli+rte/checkpoint-XXX"
+    dataset = load_dataset("json", data_files={"train": "train.json", "test": "test.json", "dev": "dev.json"})
+    metric_name = "accuracy"
     metric = load_metric('glue', "mnli")
 
     def compute_metrics(eval_pred):
@@ -111,15 +126,12 @@ def main():
     model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
 
     def preprocess_function(examples):
-        if sentence2_key is None:
-            return tokenizer(examples[sentence1_key], truncation=True)
-        labels = [label if label in [0,1] else 1 for label in examples["label"]]
-        examples["label"] = labels
-        return tokenizer(examples[sentence1_key], examples[sentence2_key], truncation=True)
+        return tokenizer(examples["claim"], examples["evidence"], truncation=True)
 
     encoded_dataset = dataset.map(preprocess_function, batched=True)
+
     args = TrainingArguments(
-        "mnli+rte",
+        "mnli+rte+fever",
         evaluation_strategy="epoch",
         learning_rate=2e-5,
         per_device_train_batch_size=16,
@@ -134,7 +146,7 @@ def main():
         model,
         args,
         train_dataset=encoded_dataset["train"],
-        eval_dataset=encoded_dataset[validation_key],
+        eval_dataset=encoded_dataset["dev"],
         tokenizer=tokenizer,
         compute_metrics=compute_metrics
     )
