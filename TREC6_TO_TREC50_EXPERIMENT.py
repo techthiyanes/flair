@@ -202,11 +202,11 @@ if __name__ == "__main__":
     # CHECK EXPERIMENT
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
-    flair.device = "cuda:1"
+    #flair.device = "cuda:1"
     path = 'experiments'
     experiment = "1_bert_entailment"
     task = "mnli/trec6_to_trec50"
     experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="mnli/checkpoint-98176")
+    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
     train_few_shot_model(experiment_path)
 

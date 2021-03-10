@@ -6,7 +6,6 @@ import flair
 import os
 
 def main():
-    """
     model_checkpoint = "bert-base-uncased"
     mnli_dataset = load_dataset("glue", "mnli")
     metric_name = "accuracy"
@@ -68,7 +67,7 @@ def main():
     model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
 
     def preprocess_function(examples):
-        return tokenizer(examples["sentence1"], examples["sentence2"], truncation=True)
+        return tokenizer(examples["sentence2"], examples["sentence1"], truncation=True)
 
     encoded_dataset = rte_dataset.map(preprocess_function, batched=True)
 
@@ -97,12 +96,11 @@ def main():
     trainer.evaluate()
     trainer.save_model("pretained_mnli_rte/best_model")
     tokenizer.save_pretrained("pretained_mnli_rte/best_model")
-    """
 
-    model_checkpoint = "bert-base-uncased" #f"pretained_mnli/best_model"
-    fever_dataset = load_dataset("json", data_files={"train": f"{flair.cache_root}/datasets/fever/train.jsonl",
-                                               "test": f"{flair.cache_root}/datasets/fever/test.jsonl",
-                                               "dev": f"{flair.cache_root}/datasets/fever/dev.jsonl"})
+    model_checkpoint = f"pretained_mnli_rte/best_model"
+    fever_dataset = load_dataset("json", data_files={"train": f"nli_fever/train_fitems.jsonl",
+                                               "test": f"nli_fever/test_fitems.jsonl",
+                                               "dev": f"nli_fever/dev_fitems.jsonl"})
     metric_name = "accuracy"
     metric = load_metric('glue', "mnli")
 
@@ -115,9 +113,9 @@ def main():
     model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
 
     def preprocess_function(examples):
-        labels = ["entailment" if x == "SUPPORTS" else "not entailment" for x in examples["label"]]
+        labels = [1 if x == "SUPPORTS" else 0 for x in examples["label"]]
         examples["label"] = labels
-        return tokenizer(examples["query"], examples["context"], padding=True)
+        return tokenizer(examples["query"], examples["context"], truncation=True)
 
     encoded_dataset = fever_dataset.map(preprocess_function, batched=True)
 
