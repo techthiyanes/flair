@@ -117,7 +117,7 @@ def main():
     def preprocess_function(examples):
         labels = ["entailment" if x == "SUPPORTS" else "not entailment" for x in examples["label"]]
         examples["label"] = labels
-        return tokenizer(examples["query"], examples["context"], truncation=True)
+        return tokenizer(examples["query"], examples["context"], padding=True)
 
     encoded_dataset = fever_dataset.map(preprocess_function, batched=True)
 
