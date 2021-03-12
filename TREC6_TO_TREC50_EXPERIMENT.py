@@ -5,36 +5,23 @@ from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
 
-def train_base_model(path, document_embeddings):
-    # 1. define label names in natural language since some datasets come with cryptic set of labels
-    label_name_map = {'ENTY':'question about entity',
-                      'DESC':'question about description',
-                      'ABBR':'question about abbreviation',
-                      'HUM':'question about person',
-                      'NUM':'question about number',
-                      'LOC':'question about location'
-                      }
-
-    # 2. get the corpus
-    whole_corpus: Corpus = TREC_6(label_name_map=label_name_map)
-
+def train_base_model(corpus, path, document_embeddings):
     # 3. create a TARS classifier
-    tars = TARSClassifier(task_name='TREC_6', label_dictionary=whole_corpus.make_label_dictionary(), document_embeddings=document_embeddings)
+    tars = TARSClassifier(task_name='TREC6', label_dictionary=corpus.make_label_dictionary(),
+                          document_embeddings=document_embeddings)
 
     # 4. initialize the text classifier trainer
-    trainer = ModelTrainer(tars, whole_corpus)
+    trainer = ModelTrainer(tars, corpus)
 
     # 5. start the training
-    trainer.train(base_path=f"{path}/pretrained_model", # path to store the model artifacts
-                  learning_rate=0.02, # use very small learning rate
+    trainer.train(base_path=path,
+                  learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=20,
                   embeddings_storage_mode='none')
 
-def train_few_shot_model(path):
-    base_pretrained_model_path = f"{path}/pretrained_model/best-model.pt"
-    base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
 
+def train_few_shot_model(path):
     label_name_map = {'ENTY:sport': 'question about entity sport',
                              'ENTY:dismed': 'question about entity diseases medicine',
                              'LOC:city': 'question about location city',
@@ -101,11 +88,15 @@ def train_few_shot_model(path):
 
     for no_examples in number_of_seen_examples:
         for run_number in range(5):
-            if no_examples == 0 and run_number == 0:
 
+            for data_point in test_split:
+                data_point.remove_labels("label")
+
+            if no_examples == 0 and run_number == 0:
                 tp = 0
                 all = 0
                 classes = [key for key in label_name_map.values()]
+                base_pretrained_tars = init_tars(path)
                 base_pretrained_tars.predict_zero_shot(test_split, classes, multi_label=False)
                 for sentence in test_split:
                     true = sentence.get_labels("class")[0]
@@ -122,19 +113,31 @@ def train_few_shot_model(path):
 
             elif no_examples > 0:
 
-                few_shot_corpus = create_few_shot_corpus(label_ids_mapping, no_examples, whole_corpus, test_split, corpus_type)
+                base_pretrained_tars = init_tars(path)
 
-                base_pretrained_tars.add_and_switch_to_new_task("TREC_50", label_dictionary=few_shot_corpus.make_label_dictionary())
+                few_shot_corpus = create_few_shot_corpus(label_ids_mapping, no_examples, whole_corpus, test_split,
+                                                         corpus_type)
+
+                base_pretrained_tars.add_and_switch_to_new_task("TREC50",
+                                                                label_dictionary=few_shot_corpus.make_label_dictionary())
 
                 trainer = ModelTrainer(base_pretrained_tars, few_shot_corpus)
 
+                # path = experiemnts/1_bert_baseline/trec_to_news
                 outpath = f'{path}/fewshot_with_{no_examples}/run_{run_number}'
 
-                trainer.train(base_path=outpath, # path to store the model artifacts
-                              learning_rate=0.02, # use very small learning rate
+                trainer.train(base_path=outpath,  # path to store the model artifacts
+                              learning_rate=0.02,  # use very small learning rate
                               mini_batch_size=16,
                               max_epochs=20,
                               embeddings_storage_mode='none')
+
+
+def init_tars(path):
+    model_path = f"{path}/pretrained_model/best-model.pt"
+    tars = TARSClassifier.load(model_path)
+    return tars
+
 
 def extract_label_ids_mapping(corpus, corpus_type):
     if corpus_type == "default":
@@ -152,49 +155,50 @@ def extract_label_ids_mapping(corpus, corpus_type):
 
     return label_ids_mapping
 
-def create_few_shot_corpus(label_ids_mapping, number_examples, corpus, test_sentences, corpus_type = "default"):
 
-        train_ids = []
-        dev_ids = []
-        for label, ids in label_ids_mapping.items():
-            if len(ids) <= (number_examples * 2):
-                samples = ids
-            else:
-                samples = random.sample(ids, number_examples * 2)
-            middle_index = len(samples) // 2
-            train_ids.extend(samples[:middle_index])
-            dev_ids.extend(samples[middle_index:])
+def create_few_shot_corpus(label_ids_mapping, number_examples, corpus, test_sentences, corpus_type="default"):
+    train_ids = []
+    dev_ids = []
+    for label, ids in label_ids_mapping.items():
+        if len(ids) <= (number_examples * 2):
+            samples = ids
+        else:
+            samples = random.sample(ids, number_examples * 2)
+        middle_index = len(samples) // 2
+        train_ids.extend(samples[:middle_index])
+        dev_ids.extend(samples[middle_index:])
 
-        train_sentences = []
-        for id in train_ids:
-            if corpus_type == "default":
-                train_sentences.append(corpus.train.dataset.sentences[id])
-            elif corpus_type == "csv":
-                train_sentences.append(corpus.train[id])
+    train_sentences = []
+    for id in train_ids:
+        if corpus_type == "default":
+            train_sentences.append(corpus.train.dataset.sentences[id])
+        elif corpus_type == "csv":
+            train_sentences.append(corpus.train[id])
 
-        dev_sentences = []
-        for id in dev_ids:
-            if corpus_type == "default":
-                dev_sentences.append(corpus.train.dataset.sentences[id])
-            elif corpus_type == "csv":
-                dev_sentences.append(corpus.train[id])
+    dev_sentences = []
+    for id in dev_ids:
+        if corpus_type == "default":
+            dev_sentences.append(corpus.train.dataset.sentences[id])
+        elif corpus_type == "csv":
+            dev_sentences.append(corpus.train[id])
 
-        # training dataset consisting of four sentences (2 labeled as "food" and 2 labeled as "drink")
-        train = SentenceDataset(
-            train_sentences
-        )
+    # training dataset consisting of four sentences (2 labeled as "food" and 2 labeled as "drink")
+    train = SentenceDataset(
+        train_sentences
+    )
 
-        dev = SentenceDataset(
-            dev_sentences
-        )
+    dev = SentenceDataset(
+        dev_sentences
+    )
 
-        test = SentenceDataset(
-            test_sentences
-        )
+    test = SentenceDataset(
+        test_sentences
+    )
 
-        few_shot_corpus = Corpus(train=train, dev=dev, test=test)
+    few_shot_corpus = Corpus(train=train, dev=dev, test=test)
 
-        return few_shot_corpus
+    return few_shot_corpus
+
 
 if __name__ == "__main__":
     # TODOS
@@ -202,11 +206,41 @@ if __name__ == "__main__":
     # CHECK EXPERIMENT
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
-    #flair.device = "cuda:1"
-    path = 'experiments'
-    experiment = "1_bert_entailment"
-    task = "mnli/trec6_to_trec50"
-    experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="bert-base-uncased")
-    train_few_shot_model(experiment_path)
+    # CHECK CORPORA + TASK DESCRIPTION
 
+    # 1. define label names in natural language since some datasets come with cryptic set of labels
+    label_name_map = {'ENTY':'question about entity',
+                      'DESC':'question about description',
+                      'ABBR':'question about abbreviation',
+                      'HUM':'question about person',
+                      'NUM':'question about number',
+                      'LOC':'question about location'
+                      }
+
+    # 2. get the corpus
+    trec6: Corpus = TREC_6(label_name_map=label_name_map)
+
+    path_model_mapping = {
+        "bert-base-uncased":
+            {
+                "path": "1_bert_baseline",
+                "model": "bert-base-uncased"
+            },
+        "bert-entailment-standard":
+            {
+                "path": "1_entailment_standard",
+                "model": "entailment_text_sep_label/pretrained_mnli/best_model"
+            },
+        "bert-entailment-advanced":
+            {
+                "path": "1_entailment_advanced",
+                "model": "entailment_text_sep_label/pretrained_mnli_rte_fever/best_model"
+            }
+    }
+
+    task = "trec6_to_trec50"
+    for model_description, configuration in path_model_mapping.items():
+        experiment_path = f"experiments_v2/{configuration['path']}/{task}"
+        train_base_model(trec6, f"{experiment_path}/pretrained_model",
+                         document_embeddings=f"{configuration['model']}")
+        train_few_shot_model(experiment_path)
