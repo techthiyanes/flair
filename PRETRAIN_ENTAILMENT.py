@@ -6,6 +6,7 @@ import flair
 import os
 
 def main():
+    """
     model_checkpoint = "bert-base-uncased"
     mnli_dataset = load_dataset("glue", "mnli")
     metric_name = "accuracy"
@@ -96,11 +97,12 @@ def main():
     trainer.evaluate()
     trainer.save_model("pretained_mnli_rte/best_model")
     tokenizer.save_pretrained("pretained_mnli_rte/best_model")
+    """
 
     model_checkpoint = f"pretained_mnli_rte/best_model"
-    fever_dataset = load_dataset("json", data_files={"train": f"nli_fever/train_fitems.jsonl",
-                                               "test": f"nli_fever/test_fitems.jsonl",
-                                               "dev": f"nli_fever/dev_fitems.jsonl"})
+    fever_dataset = load_dataset("json", data_files={"train": f"{flair.cache_root}/datasets/fever/train.jsonl",
+                                               "test": f"{flair.cache_root}/datasets/fever/test.jsonl",
+                                               "dev": f"{flair.cache_root}/datasets/fever/dev.jsonl"})
     metric_name = "accuracy"
     metric = load_metric('glue', "mnli")
 
@@ -115,7 +117,7 @@ def main():
     def preprocess_function(examples):
         labels = [1 if x == "SUPPORTS" else 0 for x in examples["label"]]
         examples["label"] = labels
-        return tokenizer(examples["query"], examples["context"], truncation=True)
+        return tokenizer(examples["context"], examples["query"], truncation=True)
 
     encoded_dataset = fever_dataset.map(preprocess_function, batched=True)
 
@@ -144,7 +146,6 @@ def main():
     trainer.evaluate()
     trainer.save_model("pretained_mnli_rte_fever/best_model")
     tokenizer.save_pretrained("pretained_mnli_rte_fever/best_model")
-
 
 if __name__ == "__main__":
     main()
