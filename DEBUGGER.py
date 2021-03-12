@@ -35,7 +35,7 @@ def main():
     for no_examples in [1,2]:
 
         for data_point in test_split:
-            data_point.remove_label("label")
+            data_point.remove_labels("label")
 
         base_pretrained_tars = init_tars(path)
 
@@ -55,7 +55,8 @@ def main():
                       embeddings_storage_mode='none')
 
 def init_tars(path):
-    model_path = f"{path}/pretrained_model/best-model.pt"
+    #model_path = f"{path}/pretrained_model/best-model.pt"
+    model_path = "tars-base"
     tars = TARSClassifier.load(model_path)
     return tars
 
