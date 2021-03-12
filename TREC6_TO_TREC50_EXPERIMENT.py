@@ -207,7 +207,7 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
-
+    flair.device = "cuda:3"
     # 1. define label names in natural language since some datasets come with cryptic set of labels
     label_name_map = {'ENTY':'question about entity',
                       'DESC':'question about description',

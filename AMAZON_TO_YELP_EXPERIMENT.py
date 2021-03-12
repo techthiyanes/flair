@@ -163,6 +163,7 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
+    flair.device = "cuda:0"
     column_name_map = {0: "label", 2: "text"}
     corpus_path = f"{flair.cache_root}/datasets/amazon_review_full_csv"
     label_name_map = {'1': 'very negative product sentiment',

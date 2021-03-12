@@ -179,6 +179,7 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
+    flair.device = "cuda:1"
     label_name_map = {'1': 'World',
                       '2': 'Sports',
                       '3': 'Business',

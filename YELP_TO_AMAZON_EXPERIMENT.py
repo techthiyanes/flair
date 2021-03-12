@@ -163,6 +163,7 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
+    flair.device = "cuda:1"
     label_name_map = {'1':'very negative restaurant sentiment',
                       '2':'negative restaurant sentiment',
                       '3':'neutral restaurant sentiment',
