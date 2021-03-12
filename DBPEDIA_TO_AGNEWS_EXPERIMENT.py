@@ -4,6 +4,7 @@ from flair.datasets import SentenceDataset, CSVClassificationCorpus
 from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 import random
+import os
 
 def train_base_model(path, document_embeddings):
     label_name_map = {'1': 'Company',
@@ -37,17 +38,14 @@ def train_base_model(path, document_embeddings):
     trainer = ModelTrainer(tars, whole_corpus)
 
     # 5. start the training
-    trainer.train(base_path=f"{path}/pretrained_model", # path to store the model artifacts
-                  learning_rate=0.02, # use very small learning rate
+    trainer.train(base_path=path,
+                  learning_rate=0.02,
                   mini_batch_size=16,
                   mini_batch_chunk_size=4,
                   max_epochs=20,
                   embeddings_storage_mode='none')
 
 def train_few_shot_model(path):
-    base_pretrained_model_path = f"{path}/pretrained_model/best-model.pt"
-    base_pretrained_tars = TARSClassifier.load(base_pretrained_model_path)
-
     label_name_map = {'1': 'World',
                       '2': 'Sports',
                       '3': 'Business',
@@ -75,11 +73,15 @@ def train_few_shot_model(path):
 
     for no_examples in number_of_seen_examples:
         for run_number in range(5):
-            if no_examples == 0 and run_number == 0:
 
+            for data_point in test_split:
+                data_point.remove_label("label")
+
+            if no_examples == 0 and run_number == 0:
                 tp = 0
                 all = 0
                 classes = [key for key in label_name_map.values()]
+                base_pretrained_tars = init_tars(path)
                 base_pretrained_tars.predict_zero_shot(test_split, classes, multi_label=False)
                 for sentence in test_split:
                     true = sentence.get_labels("class")[0]
@@ -96,13 +98,15 @@ def train_few_shot_model(path):
 
             elif no_examples > 0:
 
+                base_pretrained_tars = init_tars(path)
+
                 few_shot_corpus = create_few_shot_corpus(label_ids_mapping, no_examples, whole_corpus, test_split, corpus_type)
 
                 base_pretrained_tars.add_and_switch_to_new_task("AGNEWS", label_dictionary=few_shot_corpus.make_label_dictionary())
 
                 trainer = ModelTrainer(base_pretrained_tars, few_shot_corpus)
 
-                outpath = f'{path}/fewshot_with_{no_examples}/run_{run_number}'
+                outpath = f'{path}/fewshot/fewshot_with_{no_examples}/run_{run_number}'
 
                 trainer.train(base_path=outpath, # path to store the model artifacts
                               learning_rate=0.02, # use very small learning rate
@@ -110,6 +114,11 @@ def train_few_shot_model(path):
                               mini_batch_chunk_size=4,
                               max_epochs=20,
                               embeddings_storage_mode='none')
+
+def init_tars(path):
+    model_path = f"{path}/pretrained_model/best-model.pt"
+    tars = TARSClassifier.load(model_path)
+    return tars
 
 def extract_label_ids_mapping(corpus, corpus_type):
     if corpus_type == "default":
@@ -178,11 +187,29 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
-    flair.device = "cuda:3"
-    path = 'experiments'
-    experiment = "1_bert_entailment"
-    task = "mnli/dbpedia_to_agnews"
-    experiment_path = f"{path}/{experiment}/{task}"
-    train_base_model(experiment_path, document_embeddings="mnli/checkpoint-98176")
-    train_few_shot_model(experiment_path)
+    path_model_mapping = {
+        "bert-base-uncased":
+            {
+                "path" : "1_bert_baseline",
+                "model": "bert-base-uncased"
+            },
+        "bert-entailment-standard":
+            {
+                "path": "1_entailment_standard",
+                "model": "textattack/bert-base-uncased-mnli"
+            },
+        "bert-entailment-advanced":
+            {
+                "path": "1_entailment_advanced",
+                "model": f"{flair.cache_root}/entailment_text_sep_label/pretrained_mnli_rte_fever/best_model"
+            }
+    }
+
+    task = "dbpedia_to_agnews"
+    for model_description, configuration in path_model_mapping.items():
+        experiment_path = f"experiments_v2/{configuration['path']}/{task}"
+        if not os.path.exists(f"{experiment_path}/pretrained_model"):
+            train_base_model(f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
+        if not os.path.exists(f"{experiment_path}/zeroshot.log"):
+            train_few_shot_model(experiment_path)
 
