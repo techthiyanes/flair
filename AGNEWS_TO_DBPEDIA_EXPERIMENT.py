@@ -101,6 +101,7 @@ def train_few_shot_model(path):
                 trainer.train(base_path=outpath,  # path to store the model artifacts
                               learning_rate=0.02,  # use very small learning rate
                               mini_batch_size=16,
+                              mini_batch_chunk_size=4,
                               max_epochs=20,
                               embeddings_storage_mode='none')
 
@@ -195,11 +196,6 @@ if __name__ == "__main__":
                                                    )
 
     path_model_mapping = {
-        "bert-base-uncased":
-            {
-                "path": "1_bert_baseline",
-                "model": "bert-base-uncased"
-            },
         "bert-entailment-standard":
             {
                 "path": "1_entailment_standard",
