@@ -17,6 +17,7 @@ def train_base_model(corpus, path, document_embeddings):
     trainer.train(base_path=path,
                   learning_rate=0.02,
                   mini_batch_size=16,
+                  mini_batch_chunk_size=4,
                   max_epochs=20,
                   embeddings_storage_mode='none')
 
