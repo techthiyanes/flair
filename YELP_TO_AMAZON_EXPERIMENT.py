@@ -177,23 +177,23 @@ if __name__ == "__main__":
                                              skip_header=False,
                                              delimiter=',',
                                              label_name_map=label_name_map
-                                             ).downsample(0.15)
+                                             ).downsample(0.25)
 
     path_model_mapping = {
         "bert-base-uncased":
             {
                 "path" : "1_bert_baseline",
-                "model": "bert-base-uncased"
+                "model": "distilbert-base-uncased"
             },
         "bert-entailment-standard":
             {
                 "path": "1_entailment_standard",
-                "model": "entailment_text_sep_label/pretrained_mnli/best_model"
+                "model": "distilbert_entailment/pretrained_mnli/best_model"
             },
         "bert-entailment-advanced":
             {
                 "path": "1_entailment_advanced",
-                "model": "entailment_text_sep_label/pretrained_mnli_rte_fever/best_model"
+                "model": "distilbert_entailment/pretrained_mnli_rte_fever/best_model"
             }
     }
 
