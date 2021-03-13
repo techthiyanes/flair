@@ -221,20 +221,20 @@ if __name__ == "__main__":
     trec6: Corpus = TREC_6(label_name_map=label_name_map)
 
     path_model_mapping = {
-        "bert-base-uncased":
+        "bart-entailment":
             {
-                "path": "1_bert_baseline",
-                "model": "bert-base-uncased"
+                "path": "1_entailment_bart",
+                "model": "facebook/bart-large-mnli"
             },
         "bert-entailment-standard":
             {
-                "path": "1_entailment_standard",
-                "model": "entailment_text_sep_label/pretrained_mnli/best_model"
+                "path": "1_entailment_standard_reversed",
+                "model": "entailment_label_sep_text/pretrained_mnli/best_model"
             },
         "bert-entailment-advanced":
             {
-                "path": "1_entailment_advanced",
-                "model": "entailment_text_sep_label/pretrained_mnli_rte_fever/best_model"
+                "path": "1_entailment_advanced_reversed",
+                "model": "entailment_label_sep_text/pretrained_mnli_rte_fever/best_model"
             }
     }
 

@@ -22,7 +22,7 @@ def main():
     def preprocess_function(examples):
         labels = [label if label in [0,1] else 1 for label in examples["label"]]
         examples["label"] = labels
-        return tokenizer(examples["hypothesis"], examples["premise"], truncation=True)
+        return tokenizer(examples["premise"], examples["hypothesis"], truncation=True)
 
     encoded_dataset = mnli_dataset.map(preprocess_function, batched=True)
 
@@ -67,7 +67,7 @@ def main():
     model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
 
     def preprocess_function(examples):
-        return tokenizer(examples["sentence2"], examples["sentence1"], truncation=True)
+        return tokenizer(examples["sentence1"], examples["sentence2"], truncation=True)
 
     encoded_dataset = rte_dataset.map(preprocess_function, batched=True)
 
