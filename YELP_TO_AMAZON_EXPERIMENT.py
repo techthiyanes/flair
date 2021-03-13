@@ -177,7 +177,7 @@ if __name__ == "__main__":
                                              skip_header=False,
                                              delimiter=',',
                                              label_name_map=label_name_map
-                                             ).downsample(0.25)
+                                             ).downsample(0.15)
 
     path_model_mapping = {
         "bert-base-uncased":
