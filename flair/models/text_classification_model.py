@@ -735,6 +735,8 @@ class TARSClassifier(TextClassifier):
             if isinstance(label_dictionary, (list, set, str)):
                 label_dictionary = TARSClassifier._make_ad_hoc_label_dictionary(label_dictionary, multi_label)
 
+            # data_point = text SEP label SEP task_id
+
             self.task_specific_attributes[task_name] = {}
             self.task_specific_attributes[task_name]['label_dictionary'] = label_dictionary
             self.task_specific_attributes[task_name]['multi_label'] = label_dictionary.multi_label

@@ -180,11 +180,6 @@ if __name__ == "__main__":
                                              ).downsample(0.25)
 
     path_model_mapping = {
-        "bert-base-uncased":
-            {
-                "path" : "1_bert_baseline",
-                "model": "distilbert-base-uncased"
-            },
         "bert-entailment-standard":
             {
                 "path": "1_entailment_standard",
