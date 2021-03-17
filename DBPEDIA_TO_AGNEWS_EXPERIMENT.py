@@ -206,4 +206,3 @@ if __name__ == "__main__":
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
         train_base_model(dbpedia, f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
         train_few_shot_model(experiment_path)
-

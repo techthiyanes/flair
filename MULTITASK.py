@@ -1,10 +1,15 @@
 import flair
-from flair.data import Corpus
+from flair.data import Corpus, Sentence
 from flair.models.text_classification_model import TARSClassifier
+from flair.tokenization import SegtokTokenizer
 from flair.trainers import ModelTrainer
-from flair.datasets import TREC_50, CSVClassificationCorpus
+from flair.datasets import TREC_50, CSVClassificationCorpus, SentenceDataset
+
 
 def get_corpora():
+    tokenizer = SegtokTokenizer()
+
+    # TREC50 CORPUS
     trec50_label_name_map = {'ENTY:sport': 'question about entity sport',
                              'ENTY:dismed': 'question about entity diseases medicine',
                              'LOC:city': 'question about location city',
@@ -56,142 +61,220 @@ def get_corpora():
                              'NUM:volsize': 'question about number volume size',
                              'DESC:desc': 'question about description description'
                              }
-    trec50: Corpus = TREC_50(label_name_map=trec50_label_name_map)
+    trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map)
+    trec_train = Corpus(train=trec_full.train, dev=trec_full.dev)
+    trec_test = trec_full.test
 
-    column_name_map = {0: "label", 2: "text"}
-    corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
+    # AGNEWS CORPUS
     agnews_label_name_map = {'1': 'World',
                               '2': 'Sports',
                               '3': 'Business',
                               '4': 'Science Technology'
                               }
-    agnews: Corpus = CSVClassificationCorpus(
+    column_name_map = {0: "label", 1: "text", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
+    agnews_full: Corpus = CSVClassificationCorpus(
         corpus_path,
         column_name_map,
         skip_header=False,
         delimiter=',',
         label_name_map=agnews_label_name_map
     )
+    agnews_train = Corpus(train=agnews_full.train, dev=agnews_full.dev)
+    test_split_sentences = []
+    for data_point in agnews_full.test.raw_data:
+        text = " ".join(
+            [data_point[text_column] for text_column in agnews_full.train.dataset.text_columns]
+        )
+        sentence = Sentence(text, use_tokenizer=tokenizer)
+        sentence.add_label("class", data_point[0])
+        test_split_sentences.append(sentence)
+    agnews_test = SentenceDataset(test_split_sentences)
 
+    # DBPEDIA CORPUS
+    dbpedia_label_name_map = {'1': 'Company',
+                              '2': 'Educational Institution',
+                              '3': 'Artist',
+                              '4': 'Athlete',
+                              '5': 'Office Holder',
+                              '6': 'Mean Of Transportation',
+                              '7': 'Building',
+                              '8': 'Natural Place',
+                              '9': 'Village',
+                              '10': 'Animal',
+                              '11': 'Plant',
+                              '12': 'Album',
+                              '13': 'Film',
+                              '14': 'Written Work'
+                              }
     column_name_map = {0: "label", 2: "text"}
     corpus_path = f"{flair.cache_root}/datasets/dbpedia_csv"
-    dbpedia_label_name_map = {'1': 'Company',
-                      '2': 'Educational Institution',
-                      '3': 'Artist',
-                      '4': 'Athlete',
-                      '5': 'Office Holder',
-                      '6': 'Mean Of Transportation',
-                      '7': 'Building',
-                      '8': 'Natural Place',
-                      '9': 'Village',
-                      '10': 'Animal',
-                      '11': 'Plant',
-                      '12': 'Album',
-                      '13': 'Film',
-                      '14': 'Written Work'
-                      }
-    dbpedia: Corpus = CSVClassificationCorpus(
+    dbpedia_full: Corpus = CSVClassificationCorpus(
         corpus_path,
         column_name_map,
         skip_header=False,
         delimiter=',',
         label_name_map=dbpedia_label_name_map
-    ).downsample(0.25)
+    )
+    dbpedia_train = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev).downsample(0.25)
+    test_split_sentences = []
+    for data_point in dbpedia_full.test.raw_data:
+        text = " ".join(
+            [data_point[text_column] for text_column in dbpedia_full.train.dataset.text_columns]
+        )
+        sentence = Sentence(text, use_tokenizer=tokenizer)
+        sentence.add_label("class", data_point[0])
+        test_split_sentences.append(sentence)
+    dbpedia_test = SentenceDataset(test_split_sentences)
 
-    column_name_map = {0: "label", 2: "text"}
-    corpus_path = f"{flair.cache_root}/datasets/amazon_review_full_csv"
+    # AMAZON CORPUS
     amazon_label_name_map = {'1': 'very negative product sentiment',
                       '2': 'negative product sentiment',
                       '3': 'neutral product sentiment',
                       '4': 'positive product sentiment',
                       '5': 'very positive product sentiment'
                       }
-    amazon: Corpus = CSVClassificationCorpus(corpus_path,
-                                             column_name_map,
-                                             skip_header=False,
-                                             delimiter=',',
-                                             label_name_map=amazon_label_name_map
-                                             ).downsample(0.05)
+    column_name_map = {0: "label", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/amazon_review_full_csv"
+    amazon_full: Corpus = CSVClassificationCorpus(
+        corpus_path,
+        column_name_map,
+        skip_header=False,
+        delimiter=',',
+        label_name_map=amazon_label_name_map
+    )
+    amazon_train = Corpus(train=amazon_full.train, dev=amazon_full.dev).downsample(0.05)
+    test_split_sentences = []
+    for data_point in amazon_full.test.raw_data:
+        text = " ".join(
+            [data_point[text_column] for text_column in amazon_full.train.dataset.text_columns]
+        )
+        sentence = Sentence(text, use_tokenizer=tokenizer)
+        sentence.add_label("class", data_point[0])
+        test_split_sentences.append(sentence)
+    amazon_test = SentenceDataset(test_split_sentences)
 
-    column_name_map = {0: "label", 1: "text"}
-    corpus_path = f"{flair.cache_root}/datasets/yelp_review_full_csv"
+    # YELP CORPUS
     yelp_label_name_map = {'1': 'very negative restaurant sentiment',
                       '2': 'negative restaurant sentiment',
                       '3': 'neutral restaurant sentiment',
                       '4': 'positive restaurant sentiment',
                       '5': 'very positive restaurant sentiment'
                       }
-    yelp: Corpus = CSVClassificationCorpus(corpus_path,
-                                           column_name_map,
-                                           skip_header=False,
-                                           delimiter=',',
-                                           label_name_map=yelp_label_name_map
-                                           ).downsample(0.25)
+    column_name_map = {0: "label", 1: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/yelp_review_full_csv"
+    yelp_full: Corpus = CSVClassificationCorpus(
+        corpus_path,
+        column_name_map,
+        skip_header=False,
+        delimiter=',',
+        label_name_map=yelp_label_name_map
+    )
+    yelp_train = Corpus(train=yelp_full.train, dev=yelp_full.dev).downsample(0.05)
+    test_split_sentences = []
+    for data_point in yelp_full.test.raw_data:
+        text = " ".join(
+            [data_point[text_column] for text_column in yelp_full.train.dataset.text_columns]
+        )
+        sentence = Sentence(text, use_tokenizer=tokenizer)
+        sentence.add_label("class", data_point[0])
+        test_split_sentences.append(sentence)
+    yelp_test = SentenceDataset(test_split_sentences)
 
-    return {"trec50":trec50,
-            "agnews":agnews,
-            "dbpedia":dbpedia,
-            "amazon":amazon,
-            "yelp":yelp}
+    return {"trec50":
+                {
+                    "train": trec_train,
+                    "test": trec_test
+                },
+            "agnews":
+                {
+                    "train":agnews_train,
+                    "test":agnews_test
+                },
+            "dbpedia":
+                {
+                    "train": dbpedia_train,
+                    "test": dbpedia_test
+                },
+            "amazon":
+                {
+                    "train": amazon_train,
+                    "test": amazon_test
+                },
+            "yelp":
+                {
+                    "train": yelp_train,
+                    "test": yelp_test
+                }
+            }
 
 def train_sequential_model(corpora, configurations):
-    amazon_full = corpora.get("amazon")
-    amazon_corpus = Corpus(train=amazon_full.train, dev=amazon_full.dev)
-    tars = TARSClassifier(task_name='AMAZON', label_dictionary=amazon_corpus.make_label_dictionary(),
+    amazon_train = corpora.get("amazon").get("train")
+    tars = TARSClassifier(task_name='AMAZON', label_dictionary=amazon_train.make_label_dictionary(),
                           document_embeddings=configurations["model"])
-    trainer = ModelTrainer(tars, amazon_corpus)
+    trainer = ModelTrainer(tars, amazon_train)
     trainer.train(base_path=f"{configurations['path']}/sequential_model/1_after_amazon",
                   learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
-    yelp_full = corpora.get("yelp")
-    yelp_corpus = Corpus(train=yelp_full.train, dev=yelp_full.dev)
-    tars.add_and_switch_to_new_task("YELP", label_dictionary=yelp_corpus.make_label_dictionary())
-    trainer = ModelTrainer(tars, yelp_corpus)
+    yelp_train = corpora.get("yelp").get("train")
+    tars.add_and_switch_to_new_task("YELP", label_dictionary=yelp_train.make_label_dictionary())
+    trainer = ModelTrainer(tars, yelp_train)
     trainer.train(base_path=f"{configurations['path']}/sequential_model/2_after_yelp",
                   learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
-    dbpedia_full = corpora.get("dbpedia")
-    dbpedia_corpus = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev)
-    tars.add_and_switch_to_new_task("DBPEDIA", label_dictionary=dbpedia_corpus.make_label_dictionary())
-    trainer = ModelTrainer(tars, dbpedia_corpus)
+    dbpedia_train = corpora.get("dbpedia").get("train")
+    tars.add_and_switch_to_new_task("DBPEDIA", label_dictionary=dbpedia_train.make_label_dictionary())
+    trainer = ModelTrainer(tars, dbpedia_train)
     trainer.train(base_path=f"{configurations['path']}/sequential_model/3_after_dbpedia",
                   learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
-    agnews_full = corpora.get("agnews")
-    agnews_corpus = Corpus(train=agnews_full.train, dev=agnews_full.dev)
-    tars.add_and_switch_to_new_task("AGNEWS", label_dictionary=agnews_corpus.make_label_dictionary())
-    trainer = ModelTrainer(tars, dbpedia_corpus)
+    agnews_train = corpora.get("agnews").get("train")
+    tars.add_and_switch_to_new_task("AGNEWS", label_dictionary=agnews_train.make_label_dictionary())
+    trainer = ModelTrainer(tars, agnews_train)
     trainer.train(base_path=f"{configurations['path']}/sequential_model/4_after_agnews",
                   learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
-    trec_full = corpora.get("trec50")
-    trec_corpus = Corpus(train=trec_full.train, dev=trec_full.dev)
-    tars.add_and_switch_to_new_task("TREC50", label_dictionary=trec_corpus.make_label_dictionary())
-    trainer = ModelTrainer(tars, dbpedia_corpus)
+    trec_train = corpora.get("trec50").get("train")
+    tars.add_and_switch_to_new_task("TREC50", label_dictionary=trec_train.make_label_dictionary())
+    trainer = ModelTrainer(tars, trec_train)
     trainer.train(base_path=f"{configurations['path']}/sequential_model/5_after_trec",
                   learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
+def eval_sequential_model(corpora, configurations):
+    best_model_path = f"{configurations['path']}/sequential_model/5_after_trec/best-model.pt"
+    out_path = f"{configurations['path']}/sequential_model/evaluation"
+    best_model = TARSClassifier.load(best_model_path)
+    amazon_test = corpora.get("amazon").get("test")
+    best_model.evaluate(amazon_test, out_path=f"{out_path}/amazon.log")
+    yelp_test = corpora.get("yelp").get("test")
+    best_model.evaluate(yelp_test, out_path=f"{out_path}/yelp.log")
+    dbpedia_test = corpora.get("dbpedia").get("test")
+    best_model.evaluate(dbpedia_test, out_path=f"{out_path}/dbpedia.log")
+    agnews_test = corpora.get("agnews").get("test")
+    best_model.evaluate(agnews_test, out_path=f"{out_path}/agnews.log")
+    trec_test = corpora.get("trec").get("test")
+    best_model.evaluate(trec_test, out_path=f"{out_path}/trec.log")
+
 def train_multitask_model():
-    mutlitask_model = {"trec": tars.add_and_switch_to_new_task()}
-    MultitaskModel(tars, corpora)
+    pass
 
 if __name__ == "__main__":
-    flair.device = "cuda:3"
+    flair.device = "cuda:0"
     path_model_mapping = {
         "bert-base-uncased":
             {
@@ -210,6 +293,9 @@ if __name__ == "__main__":
             }
     }
     corpora = get_corpora()
+    """
     for key, configurations in path_model_mapping.items():
         train_sequential_model(corpora, configurations)
+        eval_sequential_model(corpora, configurations)
         train_multitask_model()
+    """
