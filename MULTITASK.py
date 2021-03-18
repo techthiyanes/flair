@@ -170,17 +170,6 @@ def get_corpora():
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
     yelp_test = SentenceDataset(test_split_sentences)
 
-    print(trec_train)
-    print(trec_test)
-    print(agnews_train)
-    print(len(agnews_test))
-    print(dbpedia_train)
-    print(len(dbpedia_test))
-    print(amazon_train)
-    print(len(amazon_test))
-    print(yelp_train)
-    print(len(yelp_test))
-
     return {"trec50":
                 {
                     "train": trec_train,
@@ -293,9 +282,7 @@ if __name__ == "__main__":
             }
     }
     corpora = get_corpora()
-    """
     for key, configurations in path_model_mapping.items():
         train_sequential_model(corpora, configurations)
         eval_sequential_model(corpora, configurations)
-        train_multitask_model()
-    """
+        #train_multitask_model()
