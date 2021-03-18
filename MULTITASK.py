@@ -72,6 +72,8 @@ def get_corpora():
     trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map)
     trec_train = Corpus(train=trec_full.train, dev=trec_full.dev)
     trec_test = trec_full.test
+    print(trec_train)
+    print(len(trec_test))
 
     # AGNEWS CORPUS
     agnews_label_name_map = {
@@ -94,6 +96,8 @@ def get_corpora():
     test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
     agnews_test = SentenceDataset(test_split_sentences)
+    print(agnews_train)
+    print(len(agnews_test))
 
     # DBPEDIA CORPUS
     dbpedia_label_name_map = {'1': 'Company',
@@ -122,9 +126,11 @@ def get_corpora():
     ).downsample(0.25)
     dbpedia_train = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev)
     text_columns = dbpedia_full.train.dataset.dataset.text_columns
-    test_split_sentences = [make_text(data_point, text_columns) for data_point in dbpedia_full.test.raw_data]
+    test_split_sentences = [make_text(data_point, text_columns) for data_point in dbpedia_full.test.dataset.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
     dbpedia_test = SentenceDataset(test_split_sentences)
+    print(dbpedia_train)
+    print(len(dbpedia_test))
 
     # AMAZON CORPUS
     amazon_label_name_map = {'1': 'very negative product sentiment',
@@ -141,12 +147,14 @@ def get_corpora():
         skip_header=False,
         delimiter=',',
         label_name_map=amazon_label_name_map
-    ).downsample(0.02)
+    ).downsample(0.03)
     amazon_train = Corpus(train=amazon_full.train, dev=amazon_full.dev)
     text_columns = amazon_full.train.dataset.text_columns
     test_split_sentences = [make_text(data_point, text_columns) for data_point in amazon_full.test.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
     amazon_test = SentenceDataset(test_split_sentences)
+    print(amazon_train)
+    print(len(amazon_test))
 
     # YELP CORPUS
     yelp_label_name_map = {'1': 'very negative restaurant sentiment',
@@ -169,6 +177,8 @@ def get_corpora():
     test_split_sentences = [make_text(data_point, text_columns) for data_point in yelp_full.test.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
     yelp_test = SentenceDataset(test_split_sentences)
+    print(yelp_train)
+    print(yelp_test)
 
     return {"trec50":
                 {
