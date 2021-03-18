@@ -121,7 +121,7 @@ def get_corpora():
         label_name_map=dbpedia_label_name_map
     ).downsample(0.25)
     dbpedia_train = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev)
-    text_columns = dbpedia_full.train.dataset.text_columns
+    text_columns = dbpedia_full.train.dataset.dataset.text_columns
     test_split_sentences = [make_text(data_point, text_columns) for data_point in dbpedia_full.test.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
     dbpedia_test = SentenceDataset(test_split_sentences)
