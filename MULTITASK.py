@@ -119,8 +119,8 @@ def get_corpora():
         skip_header=False,
         delimiter=',',
         label_name_map=dbpedia_label_name_map
-    )
-    dbpedia_train = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev).downsample(0.25)
+    ).downsample(0.25)
+    dbpedia_train = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev)
     text_columns = dbpedia_full.train.dataset.text_columns
     test_split_sentences = [make_text(data_point, text_columns) for data_point in dbpedia_full.test.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
@@ -141,8 +141,8 @@ def get_corpora():
         skip_header=False,
         delimiter=',',
         label_name_map=amazon_label_name_map
-    )
-    amazon_train = Corpus(train=amazon_full.train, dev=amazon_full.dev).downsample(0.03)
+    ).downsample(0.02)
+    amazon_train = Corpus(train=amazon_full.train, dev=amazon_full.dev)
     text_columns = amazon_full.train.dataset.text_columns
     test_split_sentences = [make_text(data_point, text_columns) for data_point in amazon_full.test.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
@@ -163,8 +163,8 @@ def get_corpora():
         skip_header=False,
         delimiter=',',
         label_name_map=yelp_label_name_map
-    )
-    yelp_train = Corpus(train=yelp_full.train, dev=yelp_full.dev).downsample(0.1)
+    ).downsample(0.1)
+    yelp_train = Corpus(train=yelp_full.train, dev=yelp_full.dev)
     text_columns = yelp_full.train.dataset.text_columns
     test_split_sentences = [make_text(data_point, text_columns) for data_point in yelp_full.test.raw_data]
     test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
