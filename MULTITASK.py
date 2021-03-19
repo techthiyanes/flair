@@ -255,7 +255,10 @@ if __name__ == "__main__":
     for name in ["AMAZON", "YELP", "DBPEDIA", "AGNEWS", "TREC"]:
         corpora = get_corpora(name)
         for key, configurations in path_model_mapping.items():
-            train_sequential_model(corpora.get(name).get("train"), name, configurations)
+            if key == "bert-base-uncased" and name == "AMAZON":
+                pass
+            else:
+                train_sequential_model(corpora.get(name).get("train"), name, configurations)
 
         #eval_sequential_model(corpora.get(name).get("test"), configurations)
             #train_multitask_model()
