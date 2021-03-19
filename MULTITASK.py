@@ -95,7 +95,7 @@ def get_corpora(name):
             label_name_map=agnews_label_name_map
         ).downsample(0.001)
         train_split = Corpus(train=agnews_full.train, dev=agnews_full.dev)
-        text_columns = agnews_full.train.dataset.text_columns
+        text_columns = [1,2]
         test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
         test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
         test_split = SentenceDataset(test_split_sentences)
@@ -127,7 +127,7 @@ def get_corpora(name):
             label_name_map=dbpedia_label_name_map
         ).downsample(0.25)
         train_split = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev)
-        text_columns = dbpedia_full.train.dataset.dataset.text_columns
+        text_columns = [1,2]
         test_split_sentences = [make_text(data_point, text_columns) for data_point in dbpedia_full.test.dataset.raw_data]
         test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
         test_split = SentenceDataset(test_split_sentences)
@@ -150,7 +150,7 @@ def get_corpora(name):
             label_name_map=amazon_label_name_map
         ).downsample(0.03)
         train_split = Corpus(train=amazon_full.train, dev=amazon_full.dev)
-        text_columns = amazon_full.train.dataset.text_columns
+        text_columns = [2]
         test_split_sentences = [make_text(data_point, text_columns) for data_point in amazon_full.test.raw_data]
         test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
         test_split = SentenceDataset(test_split_sentences)
@@ -174,7 +174,7 @@ def get_corpora(name):
             label_name_map=yelp_label_name_map
         ).downsample(0.1)
         train_split = Corpus(train=yelp_full.train, dev=yelp_full.dev)
-        text_columns = yelp_full.train.dataset.text_columns
+        text_columns = [1]
         test_split_sentences = [make_text(data_point, text_columns) for data_point in yelp_full.test.raw_data]
         test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
         test_split = SentenceDataset(test_split_sentences)
