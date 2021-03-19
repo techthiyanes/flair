@@ -193,8 +193,21 @@ def get_corpora(name):
     return corpus
 
 def train_sequential_model(corpora, task_name, configurations):
-    tars = TARSClassifier(task_name=task_name, label_dictionary=corpora.make_label_dictionary(),
-                          document_embeddings=configurations["model"])
+    if task_name == "AMAZON":
+        tars = TARSClassifier(task_name=task_name, label_dictionary=corpora.make_label_dictionary(),
+                              document_embeddings=configurations["model"])
+    elif task_name == "YELP":
+        tars = TARSClassifier.load(f"{configurations['path']}/sequential_model/after_AMAZON/best-model.pt")
+        tars.add_and_switch_to_new_task(task_name, label_dictionary=corpora.make_label_dictionary())
+    elif task_name == "DBPEDIA":
+        tars = TARSClassifier.load(f"{configurations['path']}/sequential_model/after_YELP/best-model.pt")
+        tars.add_and_switch_to_new_task(task_name, label_dictionary=corpora.make_label_dictionary())
+    elif task_name == "AGNEWS":
+        tars = TARSClassifier.load(f"{configurations['path']}/sequential_model/after_DBPEDIA/best-model.pt")
+        tars.add_and_switch_to_new_task(task_name, label_dictionary=corpora.make_label_dictionary())
+    elif task_name == "TREC":
+        tars = TARSClassifier.load(f"{configurations['path']}/sequential_model/after_AGNEWS/best-model.pt")
+        tars.add_and_switch_to_new_task(task_name, label_dictionary=corpora.make_label_dictionary())
     trainer = ModelTrainer(tars, corpora)
     trainer.train(base_path=f"{configurations['path']}/sequential_model/after_{task_name}",
                   learning_rate=0.02,
@@ -243,5 +256,6 @@ if __name__ == "__main__":
         corpora = get_corpora(name)
         for key, configurations in path_model_mapping.items():
             train_sequential_model(corpora.get(name).get("train"), name, configurations)
-            #eval_sequential_model(corpora.get(name).get("test"), configurations)
+
+        #eval_sequential_model(corpora.get(name).get("test"), configurations)
             #train_multitask_model()
