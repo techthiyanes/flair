@@ -244,9 +244,9 @@ def eval_sequential_model(corpora, configurations):
 def train_multitask_model(corpora, configurations):
 
     tars_corpus = TARSCorpus(
-        {"corpus": corpora["AMAZON"], "task_name": "amazon"},
-        {"corpus": corpora["YELP"], "task_name": "yelp"},
-        {"corpus": corpora["DBPEDIA"], "task_name": "dbpedia"},
+        #{"corpus": corpora["AMAZON"], "task_name": "amazon"},
+        #{"corpus": corpora["YELP"], "task_name": "yelp"},
+        #{"corpus": corpora["DBPEDIA"], "task_name": "dbpedia"},
         {"corpus": corpora["AGNEWS"], "task_name": "agnews"},
         {"corpus": corpora["TREC"], "task_name": "trec"}
     )
