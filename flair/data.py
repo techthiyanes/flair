@@ -220,6 +220,7 @@ class DataPoint:
     def __init__(self):
         self.annotation_layers = {}
         self.multitask_annotations = None
+        self.tars_assignment = None
 
     @property
     @abstractmethod
@@ -279,6 +280,19 @@ class DataPoint:
 
         return self
 
+    def _add_tars_assignment(self, task_id: str):
+
+        if self.tars_assignment is None:
+            self.__setattr__("tars_assignment", {})
+
+        key = "tars_assignment"
+
+        if key not in self.tars_assignment:
+            self.tars_assignment[key] = [Task(task_id)]
+        else:
+            self.tars_assignment[key].append(Task(task_id))
+
+        return self
 
 class DataPair(DataPoint):
     def __init__(self, first: DataPoint, second: DataPoint):
@@ -1430,6 +1444,14 @@ class Corpus:
         for sentence in self.get_all_sentences():
             sentence._add_task(task_id)
 
+    def set_tars_annotation(self, task_id: str):
+        """
+        Sets multitask id to all sentences in corpus
+        :param task_id: key to identify model in multitask forward method
+        """
+        for sentence in self.get_all_sentences():
+            sentence._add_tars_assignment(task_id)
+
 
 class MultiCorpus(Corpus):
     def __init__(self, corpora: List[Corpus], name: str = "multicorpus", **corpusargs):
@@ -1568,3 +1590,30 @@ class MultitaskCorpus(MultiCorpus):
         # check - corpus datatype provided to 'corpus' keyword
         assert all(map(lambda corpus_config:isinstance(corpus_config["model"], flair.nn.Model), args)), \
             "Multitask models need to torch.nn.Modules, coming from the multitask module."
+
+class TARSCorpus(MultiCorpus):
+    """
+    MultitaskCorpus takes different tasks as parameters and is used for Multitask Model Training
+    Assigns to each corpus its respective task id
+    """
+
+    def __init__(self, *args):
+
+        self.tasks = {}
+
+        corpora = []
+
+        for id, corpus_config in enumerate(args):
+
+            task_name = corpus_config.get("task_name")
+            corpus = corpus_config.get("corpus")
+
+            corpus.set_tars_annotation(task_name)
+            if not corpus in corpora: corpora.append(corpus)
+
+            self.tasks[task_name] = {
+                "task_name": task_name,
+                "label_dictionary": corpus.make_label_dictionary()
+            }
+
+        super(TARSCorpus, self).__init__(corpora)

@@ -1,14 +1,24 @@
 import torch
 
 import flair
-from flair.data import Corpus, Sentence
+from flair.data import Corpus, Sentence, TARSCorpus
 from flair.embeddings import DocumentRNNEmbeddings, StackedEmbeddings, TransformerWordEmbeddings, \
     TransformerDocumentEmbeddings
-from flair.models.text_classification_model import RefactoredTARSClassifier
+from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.tokenization import SegtokTokenizer
 from flair.trainers import ModelTrainer
-from flair.datasets import TREC_50, CSVClassificationCorpus, SentenceDataset, CONLL_03
+from flair.datasets import TREC_50, CSVClassificationCorpus, SentenceDataset
 import random
+
+tokenizer = SegtokTokenizer()
+
+def make_text(data_point, text_columns):
+    return [data_point[0], " ".join(data_point[text_column] for text_column in text_columns)]
+
+def make_sentence(data_point, tokenizer):
+    s = Sentence(data_point[1], use_tokenizer=tokenizer)
+    s.add_label("class", data_point[0])
+    return s
 
 def main():
     # ----- CORPORA -----
@@ -64,30 +74,46 @@ def main():
         'NUM:volsize': 'question about number volume size',
         'DESC:desc': 'question about description description'
     }
-    trec: Corpus = TREC_50(label_name_map=trec50_label_name_map)
-
-    # ----- TAG SPACES -----
-    trec_dictionary = trec.make_label_dictionary()
+    trec: Corpus = TREC_50(label_name_map=trec50_label_name_map).downsample(0.1)
+    agnews_label_name_map = {
+        '1': 'World',
+        '2': 'Sports',
+        '3': 'Business',
+        '4': 'Science Technology'
+    }
+    column_name_map = {0: "label", 1: "text", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
+    agnews_full: Corpus = CSVClassificationCorpus(
+        corpus_path,
+        column_name_map,
+        skip_header=False,
+        delimiter=',',
+        label_name_map=agnews_label_name_map
+    ).downsample(0.001)
+    train_split = SentenceDataset([s for s in agnews_full.train])
+    dev_split = SentenceDataset([s for s in agnews_full.dev])
+    agnews = Corpus(train=train_split, dev=dev_split)
 
     # ----- SHARED RNN LAYERS -----
     shared_rnn_layer_classification: TransformerDocumentEmbeddings= TransformerDocumentEmbeddings("distilbert-base-uncased",
                                                                                                   fine_tune=True,
                                                                                                   batch_size=16)
-
-    tars = TARSClassifier(
-        task_name="trec",
-        label_dictionary=trec_dictionary,
-        document_embeddings=shared_rnn_layer_classification
+    tars_corpus = TARSCorpus(
+        {"corpus": trec, "task_name": "trec"},
+        {"corpus": agnews, "task_name": "agnews"}
     )
-    trainer = ModelTrainer(tars, trec)
+    tars = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings=shared_rnn_layer_classification)
+
+    trainer = ModelTrainer(tars, tars_corpus)
     trainer.train(base_path="output",
                   learning_rate=0.02,
                   mini_batch_size=16,
-                  max_epochs=10,
+                  max_epochs=2,
                   embeddings_storage_mode='none')
 
 
     # ----- MULTITASK CORPUS -----
+    """
     multi_corpus = MultitaskCorpus(
         {"corpus": trec6, "model": trec_classifier},
         {"corpus": subj, "model": subj_classifier},
@@ -104,6 +130,7 @@ def main():
                   learning_rate=0.1,
                   mini_batch_size=64,
                   max_epochs=3)
+    """
 
 if __name__ == "__main__":
     main()

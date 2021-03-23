@@ -1,5 +1,7 @@
 import flair
-from flair.data import Corpus, Sentence
+from flair.data import Corpus, Sentence, TARSCorpus
+from flair.embeddings import TransformerDocumentEmbeddings
+from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.models.text_classification_model import TARSClassifier
 from flair.tokenization import SegtokTokenizer
 from flair.trainers import ModelTrainer
@@ -94,11 +96,13 @@ def get_corpora(name):
             delimiter=',',
             label_name_map=agnews_label_name_map
         )
-        train_split = Corpus(train=agnews_full.train, dev=agnews_full.dev)
-        text_columns = [1,2]
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        train_split = SentenceDataset([s for s in agnews_full.train])
+        dev_split = SentenceDataset([s for s in agnews_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [1,2]
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
+        #test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        #test_split = SentenceDataset(test_split_sentences)
 
     elif name == "DBPEDIA":
         # DBPEDIA CORPUS
@@ -126,12 +130,14 @@ def get_corpora(name):
             delimiter=',',
             label_name_map=dbpedia_label_name_map
         ).downsample(0.25)
-        train_split = Corpus(train=dbpedia_full.train, dev=dbpedia_full.dev)
-        text_columns = [1,2]
-        downsampled_test = random.sample(dbpedia_full.test.dataset.raw_data, 12500)
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        train_split = SentenceDataset([s for s in dbpedia_full.train])
+        dev_split = SentenceDataset([s for s in dbpedia_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [1,2]
+        #downsampled_test = random.sample(dbpedia_full.test.dataset.raw_data, 12500)
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
+        #test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        #test_split = SentenceDataset(test_split_sentences)
 
     # AMAZON CORPUS
     elif name == "AMAZON":
@@ -150,12 +156,14 @@ def get_corpora(name):
             delimiter=',',
             label_name_map=amazon_label_name_map
         ).downsample(0.03)
-        train_split = Corpus(train=amazon_full.train, dev=amazon_full.dev)
-        text_columns = [2]
-        downsampled_test = random.sample(amazon_full.test.dataset.raw_data, 12500)
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        train_split = SentenceDataset([s for s in amazon_full.train])
+        dev_split = SentenceDataset([s for s in amazon_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [2]
+        #downsampled_test = random.sample(amazon_full.test.dataset.raw_data, 12500)
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
+        #test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        #test_split = SentenceDataset(test_split_sentences)
 
 
     elif name == "YELP":
@@ -175,12 +183,14 @@ def get_corpora(name):
             delimiter=',',
             label_name_map=yelp_label_name_map
         ).downsample(0.1)
-        train_split = Corpus(train=yelp_full.train, dev=yelp_full.dev)
-        text_columns = [1]
-        downsampled_test = random.sample(yelp_full.test.dataset.raw_data, 12500)
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        train_split = SentenceDataset([s for s in yelp_full.train])
+        dev_split = SentenceDataset([s for s in yelp_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [1]
+        #downsampled_test = random.sample(yelp_full.test.dataset.raw_data, 12500)
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
+        #test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        #test_split = SentenceDataset(test_split_sentences)
 
     else:
         raise Exception("Corpus not found.")
@@ -230,8 +240,24 @@ def eval_sequential_model(corpora, configurations):
     trec_test = corpora.get("trec").get("test")
     best_model.evaluate(trec_test, out_path=f"{out_path}/trec.log")
 
-def train_multitask_model():
-    pass
+def train_multitask_model(corpora, configurations):
+
+    tars_corpus = TARSCorpus(
+        {"corpus": corpora["AMAZON"], "task_name": "amazon"},
+        {"corpus": corpora["YELP"], "task_name": "yelp"},
+        {"corpus": corpora["DBPEDIA"], "task_name": "dbpedia"},
+        {"corpus": corpora["AGNEWS"], "task_name": "agnews"},
+        {"corpus": corpora["TREC"], "task_name": "trec"}
+    )
+
+    tars = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings=configurations["model"])
+
+    trainer = ModelTrainer(tars, tars_corpus)
+    trainer.train(base_path=f"{configurations['path']}/multitask_model",
+                  learning_rate=0.02,
+                  mini_batch_size=16,
+                  max_epochs=10,
+                  embeddings_storage_mode='none')
 
 if __name__ == "__main__":
     flair.device = "cuda:0"
@@ -252,13 +278,18 @@ if __name__ == "__main__":
                 "model": "distilbert_entailment_label_sep_text/pretrained_mnli_rte_fever/best_model"
             }
     }
+    corpora = {}
     for name in ["AMAZON", "YELP", "DBPEDIA", "AGNEWS", "TREC"]:
-        corpora = get_corpora(name)
-        for key, configurations in path_model_mapping.items():
-            if key == "bert-base-uncased" and name == "AMAZON":
-                pass
-            else:
-                train_sequential_model(corpora.get(name).get("train"), name, configurations)
+        corpora[name] = get_corpora(name)
+    for key, configurations in path_model_mapping.items():
+        train_multitask_model(corpora, configurations)
+    """
+    for key, configurations in path_model_mapping.items():
+        if key == "bert-base-uncased" and name == "AMAZON":
+            pass
+        else:
+            train_sequential_model(corpora.get(name).get("train"), name, configurations)
 
-        #eval_sequential_model(corpora.get(name).get("test"), configurations)
-            #train_multitask_model()
+    #eval_sequential_model(corpora.get(name).get("test"), configurations)
+        #train_multitask_model()
+    """

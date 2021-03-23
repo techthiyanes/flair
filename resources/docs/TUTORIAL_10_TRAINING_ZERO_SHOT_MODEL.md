@@ -30,7 +30,7 @@ sentence = Sentence("I am so glad you liked it!")
 # 3. Define some classes that you want to predict using descriptive names
 classes = ["happy", "sad"]
 
-#4. Predict for these classes
+# 4. Predict for these classes
 tars.predict_zero_shot(sentence, classes)
 
 # Print sentence with predicted labels
@@ -163,14 +163,13 @@ from flair.datasets import TREC_6
 from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 
-
 # 1. define label names in natural language since some datasets come with cryptic set of labels
-label_name_map = {'ENTY':'question about entity',
-                  'DESC':'question about description',
-                  'ABBR':'question about abbreviation',
-                  'HUM':'question about person',
-                  'NUM':'question about number',
-                  'LOC':'question about location'
+label_name_map = {'ENTY': 'question about entity',
+                  'DESC': 'question about description',
+                  'ABBR': 'question about abbreviation',
+                  'HUM': 'question about person',
+                  'NUM': 'question about number',
+                  'LOC': 'question about location'
                   }
 
 # 2. get the corpus                  
@@ -183,11 +182,11 @@ tars = TARSClassifier(task_name='TREC_6', label_dictionary=corpus.make_label_dic
 trainer = ModelTrainer(tars, corpus)
 
 # 5. start the training
-trainer.train(base_path='resources/taggers/trec', # path to store the model artifacts
-              learning_rate=0.02, # use very small learning rate
+trainer.train(base_path='resources/taggers/trec',  # path to store the model artifacts
+              learning_rate=0.02,  # use very small learning rate
               mini_batch_size=16,
-              mini_batch_chunk_size=4, # optionally set this if transformer is too much for your machine
-              max_epochs=10, # terminate after 10 epochs
+              mini_batch_chunk_size=4,  # optionally set this if transformer is too much for your machine
+              max_epochs=10,  # terminate after 10 epochs
               )
 ```
 
