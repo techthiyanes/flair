@@ -262,6 +262,7 @@ class SequenceTaggerTask(flair.nn.Model):
         sentences: Union[List[Sentence], Sentence],
         out_path: Optional[Path] = None,
         embedding_storage_mode: str = "none",
+        **kwargs
     ) -> torch.Tensor:
         """
         flair.nn.Model interface implementation - evaluates the current model by predicting,
@@ -658,7 +659,8 @@ class TextClassificationTask(flair.nn.Model):
             self,
             sentences: Union[List[Sentence], Sentence],
             out_path: Path = None,
-            embedding_storage_mode: str = "none"
+            embedding_storage_mode: str = "none",
+            **kwargs
     )-> torch.Tensor:
         """
         flair.nn.Model interface implementation - evaluates the current model by predicting,
@@ -1160,6 +1162,8 @@ class RefactoredTARSClassifier(flair.nn.Model):
         target_scores = list()
         start_idx = 0
         end_idx = 0
+        # INPUT: [572, 2]
+        # [trec, trec, trec, agnews, amazon]
         for corpus in corpus_assignment:
             length_label_dictionary = len(self.task_specific_attributes[corpus]["label_dictionary"])
             end_idx += length_label_dictionary
@@ -1177,6 +1181,7 @@ class RefactoredTARSClassifier(flair.nn.Model):
             embedding_storage_mode: str = "none",
             mini_batch_size: int = 32,
             num_workers: int = 8,
+            **kwargs
     ) -> (Result, float):
 
         # read Dataset into data loader (if list of sentences passed, make Dataset first)
@@ -1205,6 +1210,7 @@ class RefactoredTARSClassifier(flair.nn.Model):
                 [sentence.remove_labels('predicted') for sentence in batch]
 
                 # get the gold labels
+                # [QUESITION TYPE 1, ARTICLE NEWS]
                 true_values_for_batch = [sentence.get_labels("class") for sentence in batch]
 
                 # predict for batch
