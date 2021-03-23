@@ -957,6 +957,8 @@ class RefactoredTARSClassifier(flair.nn.Model):
         else:
             self.loss_function = torch.nn.CrossEntropyLoss()
 
+        self.to(flair.device)
+
     def train(self, mode=True):
         """Populate label similarity map based on cosine similarity before running epoch
 
