@@ -280,7 +280,7 @@ if __name__ == "__main__":
             }
     }
     corpora = {}
-    for name in ["AMAZON", "YELP", "DBPEDIA", "AGNEWS", "TREC"]:
+    for name in ["AGNEWS", "TREC"]:
         corpora[name] = get_corpora(name)
     for key, configurations in path_model_mapping.items():
         train_multitask_model(corpora, configurations)
