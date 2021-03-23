@@ -194,13 +194,14 @@ def get_corpora(name):
 
     else:
         raise Exception("Corpus not found.")
-
+    """
     corpus = {name: {
         "train": train_split,
         "test": test_split
     }}
+    """
 
-    return corpus
+    return train_split
 
 def train_sequential_model(corpora, task_name, configurations):
     if task_name == "AMAZON":
