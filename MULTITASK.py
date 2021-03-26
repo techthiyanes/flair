@@ -76,8 +76,8 @@ def get_corpora(name):
              'NUM:volsize': 'question about number volume size',
              'DESC:desc': 'question about description description'
             }
-        trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map).downsample(0.04)
-        train_split = Corpus(train=trec_full.train, dev=trec_full.dev)
+        trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map)
+        #train_split = Corpus(train=trec_full.train, dev=trec_full.dev)
         test_split = [x for x in trec_full.test]
 
     elif name == "AGNEWS":
@@ -103,7 +103,6 @@ def get_corpora(name):
         text_columns = [1,2]
         test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
         test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = test_split[:32]
 
     elif name == "DBPEDIA":
         # DBPEDIA CORPUS
