@@ -229,9 +229,9 @@ def train_sequential_model(corpora, task_name, configurations):
 
 def eval_sequential_model(corpus, name, method, model):
     if method == "SEQUENTIAL":
-        best_model_path = f"{flair.cache_root}/experiments_v2/{model}/{method}/after_TREC/best-model.pt"
+        best_model_path = f"experiments_v2/{model}/{method}/after_TREC/best-model.pt"
     else:
-        best_model_path = f"{flair.cache_root}/experiments_v2/2_bert_baseline/multitask_model/best-model.pt"
+        best_model_path = f"experiments_v2/{model}/{method}/best-model.pt"
     best_model = TARSClassifier.load(best_model_path)
     best_model.evaluate(corpus, out_path=f"output_second_experiment/{name}-{method}-{model}.log")
 
