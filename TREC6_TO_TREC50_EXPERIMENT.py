@@ -134,7 +134,7 @@ def train_few_shot_model(path):
 
 
 def init_tars(path):
-    model_path = f"{path}/pretrained_model/best-model.pt"
+    model_path = f"{path}/pretrained_model/best-model_epoch5.pt"
     tars = TARSClassifier.load(model_path)
     return tars
 
@@ -241,6 +241,6 @@ if __name__ == "__main__":
     task = "trec6_to_trec50"
     for model_description, configuration in path_model_mapping.items():
         experiment_path = f"testy/experiments_v2/{configuration['path']}/{task}"
-        train_base_model(trec6, f"{experiment_path}/pretrained_model",
-                         document_embeddings=f"distilbert-base-uncased")
+        #train_base_model(trec6, f"{experiment_path}/pretrained_model",
+        #                 document_embeddings=f"distilbert-base-uncased")
         train_few_shot_model(experiment_path)
