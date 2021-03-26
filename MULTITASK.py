@@ -255,7 +255,7 @@ def train_multitask_model(corpora, configurations):
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":
-    flair.device = "cuda:0"
+    flair.device = "cuda:1"
     for name, method, model in itertools.product(["AGNEWS", "TREC"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
         eval_sequential_model(get_corpora(name), name, method, model)
 
