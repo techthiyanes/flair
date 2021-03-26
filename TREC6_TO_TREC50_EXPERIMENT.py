@@ -73,7 +73,7 @@ def train_few_shot_model(path):
                              'NUM:volsize': 'question about number volume size',
                              'DESC:desc': 'question about description description'
                              }
-    whole_corpus: Corpus = TREC_50(label_name_map=label_name_map)
+    whole_corpus: Corpus = TREC_50(label_name_map=label_name_map).downsample(0.1)
 
     number_of_seen_examples = [0, 1, 2, 4, 8, 10, 100]
 
@@ -218,7 +218,7 @@ if __name__ == "__main__":
                       }
 
     # 2. get the corpus
-    trec6: Corpus = TREC_6(label_name_map=label_name_map)
+    trec6: Corpus = TREC_6(label_name_map=label_name_map).downsample(0.1)
 
     path_model_mapping = {
         "bart-entailment":
@@ -240,7 +240,7 @@ if __name__ == "__main__":
 
     task = "trec6_to_trec50"
     for model_description, configuration in path_model_mapping.items():
-        experiment_path = f"experiments_v2/{configuration['path']}/{task}"
+        experiment_path = f"testy/experiments_v2/{configuration['path']}/{task}"
         train_base_model(trec6, f"{experiment_path}/pretrained_model",
-                         document_embeddings=f"{configuration['model']}")
+                         document_embeddings=f"distilbert-base-uncased")
         train_few_shot_model(experiment_path)
