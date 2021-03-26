@@ -234,7 +234,10 @@ def eval_sequential_model(sentence_list, name, method, model):
         best_model = RefactoredTARSClassifier.load(best_model_path)
         corpus = [x._add_tars_assignment(name.lower()) for x in sentence_list]
 
-    best_model.evaluate(corpus, out_path=f"output_second_experiment/{name}-{method}-{model}.log")
+    outp = f"output_second_experiment/{name}-{method}-{model}.log"
+    f = open(outp, "x")
+    f.close()
+    best_model.evaluate(corpus, out_path=outp)
 
 def train_multitask_model(corpora, configurations):
 
