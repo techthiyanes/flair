@@ -78,7 +78,7 @@ def get_corpora(name):
             }
         trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map)
         train_split = Corpus(train=trec_full.train, dev=trec_full.dev)
-        test_split = trec_full.test
+        test_split = [x for x in trec_full.test]
 
     elif name == "AGNEWS":
         # AGNEWS CORPUS
@@ -102,8 +102,7 @@ def get_corpora(name):
         #train_split = Corpus(train=train_split, dev=dev_split)
         text_columns = [1,2]
         test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
     elif name == "DBPEDIA":
         # DBPEDIA CORPUS
@@ -137,8 +136,7 @@ def get_corpora(name):
         text_columns = [1,2]
         downsampled_test = random.sample(dbpedia_full.test.dataset.raw_data, 12500)
         test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
     # AMAZON CORPUS
     elif name == "AMAZON":
@@ -163,8 +161,7 @@ def get_corpora(name):
         text_columns = [2]
         downsampled_test = random.sample(amazon_full.test.dataset.raw_data, 12500)
         test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
 
     elif name == "YELP":
@@ -190,8 +187,7 @@ def get_corpora(name):
         text_columns = [1]
         downsampled_test = random.sample(yelp_full.test.dataset.raw_data, 12500)
         test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split_sentences = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
-        test_split = SentenceDataset(test_split_sentences)
+        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
     else:
         raise Exception("Corpus not found.")
@@ -227,12 +223,17 @@ def train_sequential_model(corpora, task_name, configurations):
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
-def eval_sequential_model(corpus, name, method, model):
+def eval_sequential_model(sentence_list, name, method, model):
     if method == "sequential_model":
         best_model_path = f"experiments_v2/{model}/{method}/after_TREC/best-model.pt"
+        best_model = TARSClassifier.load(best_model_path)
+        best_model.switch_to_task(name)
+        corpus = sentence_list
     else:
         best_model_path = f"experiments_v2/{model}/{method}/best-model.pt"
-    best_model = TARSClassifier.load(best_model_path)
+        best_model = RefactoredTARSClassifier.load(best_model_path)
+        corpus = [x._add_tars_assignment(name.lower()) for x in sentence_list]
+
     best_model.evaluate(corpus, out_path=f"output_second_experiment/{name}-{method}-{model}.log")
 
 def train_multitask_model(corpora, configurations):
@@ -256,7 +257,7 @@ def train_multitask_model(corpora, configurations):
 
 if __name__ == "__main__":
     flair.device = "cuda:1"
-    for name, method, model in itertools.product(["AGNEWS", "TREC"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
+    for name, method, model in itertools.product(["TREC"], ["sequential_model"], ["2_bert_baseline"]):
         eval_sequential_model(get_corpora(name), name, method, model)
 
     """
