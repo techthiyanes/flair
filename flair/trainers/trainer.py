@@ -7,6 +7,7 @@ import datetime
 import sys
 import inspect
 import warnings
+import os
 import torch
 from torch.optim.sgd import SGD
 from torch.utils.data.dataset import ConcatDataset
@@ -45,6 +46,8 @@ class ModelTrainer:
             optimizer: torch.optim.Optimizer = SGD,
             epoch: int = 0,
             use_tensorboard: bool = False,
+            tensorboard_log_dir = None,
+            metrics_for_tensorboard = []
     ):
         """
         Initialize a model trainer
@@ -53,14 +56,18 @@ class ModelTrainer:
         :param optimizer: The optimizer to use (typically SGD or Adam)
         :param epoch: The starting epoch (normally 0 but could be higher if you continue training model)
         :param use_tensorboard: If True, writes out tensorboard information
+        :param tensorboard_log_dir: Directory into which tensorboard log files will be written
+        :param metrics_for_tensorboard: List of tuples that specify which metrics (in addition to the main_score) shall be plotted in tensorboard, could be [("macro avg", 'f1-score'), ("macro avg", 'precision')] for example
         """
         self.model: flair.nn.Model = model
         self.corpus: Corpus = corpus
         self.optimizer: torch.optim.Optimizer = optimizer
         self.epoch: int = epoch
         self.use_tensorboard: bool = use_tensorboard
+        self.tensorboard_log_dir = tensorboard_log_dir
+        self.metrics_for_tensorboard = metrics_for_tensorboard
 
-    def initialize_best_dev_score(self,log_dev):
+    def initialize_best_dev_score(self, log_dev):
         """
         Initialize the best score the model has seen so far.
         The score is the loss if we don't have dev data and main_score_type otherwise.
@@ -74,7 +81,7 @@ class ModelTrainer:
             self.score_mode_for_best_model_saving = "min"
             self.best_dev_score_seen = 100000000000
 
-    def check_for_best_score(self,score_value_for_best_model_saving):
+    def check_for_best_score(self, score_value_for_best_model_saving):
         """
         Check whether score_value_for_best_model_saving is better than the best score the trainer has seen so far.
         The score is the loss if we don't have dev data and main_score_type otherwise.
@@ -82,22 +89,68 @@ class ModelTrainer:
         :return: boolean indicating whether score_value_for_best_model_saving is better than the best score the trainer has seen so far
         """
 
-        if self.score_mode_for_best_model_saving=="max":
-            if self.best_dev_score_seen<score_value_for_best_model_saving:
+        if self.score_mode_for_best_model_saving == "max":
+            if self.best_dev_score_seen < score_value_for_best_model_saving:
                 found_best_model = True
-                self.best_dev_score_seen=score_value_for_best_model_saving
+                self.best_dev_score_seen = score_value_for_best_model_saving
             else:
                 found_best_model = False
         else:
-            if self.best_dev_score_seen>score_value_for_best_model_saving:
+            if self.best_dev_score_seen > score_value_for_best_model_saving:
                 found_best_model = True
-                self.best_dev_score_seen=score_value_for_best_model_saving
+                self.best_dev_score_seen = score_value_for_best_model_saving
             else:
                 found_best_model = False
         return found_best_model
 
+    def save_best_model(self, base_path, save_checkpoint):
+        # delete previous best model
+        previous_best_path = self.get_best_model_path(base_path)
+        if os.path.exists(previous_best_path):
+            os.remove(previous_best_path)
+        if save_checkpoint:
+            best_checkpoint_path = previous_best_path.replace("model", "checkpoint")
+            if os.path.exists(best_checkpoint_path):
+                os.remove(best_checkpoint_path)
+        # save current best model
+        self.model.save(
+            base_path / f"best-model_epoch{self.epoch}.pt")
+        if save_checkpoint:
+            self.save_checkpoint(
+                base_path / f"best-checkpoint_epoch{self.epoch}.pt")
 
+    @staticmethod
+    def check_for_and_delete_previous_best_models(base_path, save_checkpoint):
+        all_best_model_names = [filename for filename in os.listdir(base_path) if
+                                filename.startswith("best-model_epoch")]
+        if len(all_best_model_names) != 0:
+            warnings.warn(
+                "There should be no best model saved at epoch 1 except there is a model from previous trainings in your training folder. All previous best models will be deleted.")
+        for single_model in all_best_model_names:
+            previous_best_path = os.path.join(base_path, single_model)
+            if os.path.exists(previous_best_path):
+                os.remove(previous_best_path)
+            if save_checkpoint:
+                best_checkpoint_path = previous_best_path.replace("model", "checkpoint")
+                if os.path.exists(best_checkpoint_path):
+                    os.remove(best_checkpoint_path)
 
+    def get_best_model_path(self, base_path, check_model_existance=False):
+        all_best_model_names = [filename for filename in os.listdir(base_path) if
+                                filename.startswith("best-model_epoch")]
+        if check_model_existance:
+            if len(all_best_model_names) > 0:
+                assert len(all_best_model_names) == 1, "There should be at most one best model saved at any time."
+                return os.path.join(base_path, all_best_model_names[0])
+            else:
+                return ""
+        else:
+            if self.epoch > 1:
+                assert len(all_best_model_names) == 1, "There should be exactly one best model saved at any epoch > 1"
+                return os.path.join(base_path, all_best_model_names[0])
+            else:
+                assert len(all_best_model_names) == 0, "There should be no best model saved at epoch 1"
+                return ""
 
     def train(
             self,
@@ -133,6 +186,8 @@ class ModelTrainer:
             eval_on_train_shuffle=False,
             save_model_each_k_epochs: int = 0,
             classification_main_metric=("micro avg", 'f1-score'),
+            tensorboard_comment='',
+            save_best_checkpoints=False,
             **kwargs,
     ) -> dict:
         """
@@ -170,20 +225,23 @@ class ModelTrainer:
         be saved each 5 epochs. Default is 0 which means no model saving.
         :param save_model_epoch_step: Each save_model_epoch_step'th epoch the thus far trained model will be saved
         :param classification_main_metric: Type of metric to use for best model tracking and learning rate scheduling (if dev data is available, otherwise loss will be used), currently only applicable for text_classification_model
+        :param tensorboard_comment: Comment to use for tensorboard logging
+        :param save_best_checkpoints: If True, in addition to saving the best model also the corresponding checkpoint is saved
         :param kwargs: Other arguments for the Optimizer
         :return:
         """
-        if isinstance(self.model, TextClassifier):
-            self.main_score_type=classification_main_metric
-        else:
-            if classification_main_metric is not None:
-                warnings.warn("Specification of main score type only implemented for text classifier. Defaulting to main score type of selected model.")
-            self.main_score_type = None
+
+        main_score_type = classification_main_metric if isinstance(self.model, TextClassifier) else None
+
         if self.use_tensorboard:
             try:
                 from torch.utils.tensorboard import SummaryWriter
+                
+                if self.tensorboard_log_dir is not None and not os.path.exists(self.tensorboard_log_dir):
+                    os.mkdir(self.tensorboard_log_dir)
+                writer = SummaryWriter(log_dir=self.tensorboard_log_dir, comment=tensorboard_comment)
+                log.info(f"tensorboard logging path is {self.tensorboard_log_dir}")
 
-                writer = SummaryWriter()
             except:
                 log_line(log)
                 log.warning(
@@ -238,6 +296,9 @@ class ModelTrainer:
         if isinstance(self.model, SequenceTagger) and self.model.weight_dict and self.model.use_crf:
             log_line(log)
             log.warning(f'WARNING: Specified class weights will not take effect when using CRF')
+
+        # check for previously saved best models in the current training folder and delete them
+        self.check_for_and_delete_previous_best_models(base_path, save_best_checkpoints)
 
         # determine what splits (train, dev, test) to evaluate and log
         log_train = True if monitor_train else False
@@ -367,12 +428,12 @@ class ModelTrainer:
                 if (
                         (anneal_with_restarts or anneal_with_prestarts)
                         and learning_rate != previous_learning_rate
-                        and (base_path / "best-model.pt").exists()
+                        and os.path.exists(self.get_best_model_path(base_path))
                 ):
                     if anneal_with_restarts:
                         log.info("resetting to best model")
                         self.model.load_state_dict(
-                            self.model.load(base_path / "best-model.pt").state_dict()
+                            self.model.load(self.get_best_model_path(base_path)).state_dict()
                         )
                     if anneal_with_prestarts:
                         log.info("resetting to pre-best model")
@@ -381,6 +442,8 @@ class ModelTrainer:
                         )
 
                 previous_learning_rate = learning_rate
+                if self.use_tensorboard:
+                    writer.add_scalar("learning_rate", learning_rate, self.epoch)
 
                 # stop training if learning rate becomes too small
                 if (not isinstance(lr_scheduler, OneCycleLR)) and learning_rate < min_learning_rate:
@@ -495,7 +558,7 @@ class ModelTrainer:
                         mini_batch_size=mini_batch_chunk_size,
                         num_workers=num_workers,
                         embedding_storage_mode=embeddings_storage_mode,
-                        main_score_type=self.main_score_type
+                        main_score_type=main_score_type
                     )
                     result_line += f"\t{train_eval_result.log_line}"
 
@@ -508,7 +571,7 @@ class ModelTrainer:
                         mini_batch_size=mini_batch_chunk_size,
                         num_workers=num_workers,
                         embedding_storage_mode=embeddings_storage_mode,
-                        main_score_type=self.main_score_type
+                        main_score_type=main_score_type
                     )
                     result_line += (
                         f"\t{train_part_loss}\t{train_part_eval_result.log_line}"
@@ -516,6 +579,12 @@ class ModelTrainer:
                     log.info(
                         f"TRAIN_SPLIT : loss {train_part_loss} - score {round(train_part_eval_result.main_score, 4)}"
                     )
+                if self.use_tensorboard:
+                    for (metric_class_avg_type, metric_type) in self.metrics_for_tensorboard:
+                        writer.add_scalar(
+                            f"train_{metric_class_avg_type}_{metric_type}", train_part_eval_result.classification_report[metric_class_avg_type][metric_type], self.epoch
+                        )
+
 
                 if log_dev:
                     dev_eval_result, dev_loss = self.model.evaluate(
@@ -524,7 +593,7 @@ class ModelTrainer:
                         num_workers=num_workers,
                         out_path=base_path / "dev.tsv",
                         embedding_storage_mode=embeddings_storage_mode,
-                        main_score_type=self.main_score_type
+                        main_score_type=main_score_type
                     )
                     result_line += f"\t{dev_loss}\t{dev_eval_result.log_line}"
                     log.info(
@@ -548,6 +617,11 @@ class ModelTrainer:
                         writer.add_scalar(
                             "dev_score", dev_eval_result.main_score, self.epoch
                         )
+                        for (metric_class_avg_type, metric_type) in self.metrics_for_tensorboard:
+                            writer.add_scalar(
+                                f"dev_{metric_class_avg_type}_{metric_type}",
+                                dev_eval_result.classification_report[metric_class_avg_type][metric_type], self.epoch
+                            )
 
                 if log_test:
                     test_eval_result, test_loss = self.model.evaluate(
@@ -556,7 +630,7 @@ class ModelTrainer:
                         num_workers=num_workers,
                         out_path=base_path / "test.tsv",
                         embedding_storage_mode=embeddings_storage_mode,
-                        main_score_type=self.main_score_type
+                        main_score_type=main_score_type
                     )
                     result_line += f"\t{test_loss}\t{test_eval_result.log_line}"
                     log.info(
@@ -571,6 +645,11 @@ class ModelTrainer:
                         writer.add_scalar(
                             "test_score", test_eval_result.main_score, self.epoch
                         )
+                        for (metric_class_avg_type, metric_type) in self.metrics_for_tensorboard:
+                            writer.add_scalar(
+                                f"test_{metric_class_avg_type}_{metric_type}",
+                                test_eval_result.classification_report[metric_class_avg_type][metric_type], self.epoch
+                            )
 
                 # determine learning rate annealing through scheduler. Use auxiliary metric for AnnealOnPlateau
                 if log_dev and isinstance(lr_scheduler, AnnealOnPlateau):
@@ -646,7 +725,7 @@ class ModelTrainer:
                         and self.check_for_best_score(current_score)
                 ):
                     print("saving best model")
-                    self.model.save(base_path / "best-model.pt")
+                    self.save_best_model(base_path, save_checkpoint=save_best_checkpoints)
 
                     if anneal_with_prestarts:
                         current_state_dict = self.model.state_dict()
@@ -677,7 +756,7 @@ class ModelTrainer:
 
         # test best model if test data is present
         if self.corpus.test and not train_with_test:
-            final_score = self.final_test(base_path, mini_batch_chunk_size, num_workers)
+            final_score = self.final_test(base_path, mini_batch_chunk_size, num_workers, main_score_type)
         else:
             final_score = 0
             log.info("Test data not provided setting final score to 0")
@@ -707,18 +786,24 @@ class ModelTrainer:
         return model
 
     def final_test(
-            self, base_path: Union[Path, str], eval_mini_batch_size: int, num_workers: int = 8
+            self,
+            base_path: Union[Path, str],
+            eval_mini_batch_size: int,
+            num_workers: int = 8,
+            main_score_type: str = None,
     ):
         if type(base_path) is str:
             base_path = Path(base_path)
 
         log_line(log)
-        log.info("Testing using best model ...")
 
         self.model.eval()
 
-        if (base_path / "best-model.pt").exists():
-            self.model = self.model.load(base_path / "best-model.pt")
+        if (os.path.exists(self.get_best_model_path(base_path, check_model_existance=True))):
+            log.info("Testing using best model ...")
+            self.model = self.model.load(self.get_best_model_path(base_path, check_model_existance=True))
+        else:
+            log.info("Testing using last state of model ...")
 
         test_results, test_loss = self.model.evaluate(
             self.corpus.test,
@@ -726,7 +811,7 @@ class ModelTrainer:
             num_workers=num_workers,
             out_path=base_path / "test.tsv",
             embedding_storage_mode="none",
-            main_score_type=self.main_score_type
+            main_score_type=main_score_type
         )
 
         test_results: Result = test_results
@@ -745,7 +830,7 @@ class ModelTrainer:
                         num_workers=num_workers,
                         out_path=base_path / f"{subcorpus.name}-test.tsv",
                         embedding_storage_mode="none",
-                        main_score_type=self.main_score_type
+                        main_score_type=main_score_type
                     )
                     log.info(subcorpus.name)
                     log.info(subcorpus_results.log_line)
