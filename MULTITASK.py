@@ -235,7 +235,7 @@ def eval_sequential_model(sentence_list, name, method, model):
         corpus = [x._add_tars_assignment(name.lower()) for x in sentence_list]
 
     result, _ = best_model.evaluate(corpus)
-    with open(f"{name}-{method}-{model}.txt", "w") as f:
+    with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
         f.write(result.detailed_results)
 
 def train_multitask_model(corpora, configurations):
