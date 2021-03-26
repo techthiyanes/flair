@@ -258,7 +258,7 @@ def train_multitask_model(corpora, configurations):
 
 if __name__ == "__main__":
     flair.device = "cuda:1"
-    for name, method, model in itertools.product(["TREC"], ["sequential_model"], ["2_bert_baseline"]):
+    for name, method, model in itertools.product(["TREC"], ["multitask_model"], ["2_bert_baseline"]):
         eval_sequential_model(get_corpora(name), name, method, model)
 
     """
