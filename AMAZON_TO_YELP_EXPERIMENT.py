@@ -180,14 +180,19 @@ if __name__ == "__main__":
                                                    ).downsample(0.05)
 
     path_model_mapping = {
+        "bert-entailment-standard":
+            {
+                "path": "1_entailment_standard",
+                "model": "distilbert_entailment_label_sep_text/pretrained_mnli/best_model"
+            },
         "bert-entailment-advanced":
             {
                 "path": "1_entailment_advanced",
-                "model": "distilbert_entailment/pretrained_mnli_rte_fever/best_model"
+                "model": "distilbert_entailment_label_sep_text/pretrained_mnli_rte_fever/best_model"
             }
     }
 
-    task = "amazon_to_yelp"
+    task = "amazon_to_yelp_NEW"
     for model_description, configuration in path_model_mapping.items():
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
         train_base_model(amazon, f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
