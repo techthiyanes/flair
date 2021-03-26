@@ -228,7 +228,7 @@ def train_sequential_model(corpora, task_name, configurations):
                   embeddings_storage_mode='none')
 
 def eval_sequential_model(corpus, name, method, model):
-    if method == "SEQUENTIAL":
+    if method == "sequential_model":
         best_model_path = f"experiments_v2/{model}/{method}/after_TREC/best-model.pt"
     else:
         best_model_path = f"experiments_v2/{model}/{method}/best-model.pt"
