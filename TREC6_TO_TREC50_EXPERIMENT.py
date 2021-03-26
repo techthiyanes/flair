@@ -17,7 +17,7 @@ def train_base_model(corpus, path, document_embeddings):
     trainer.train(base_path=path,
                   learning_rate=0.02,
                   mini_batch_size=16,
-                  max_epochs=20,
+                  max_epochs=5,
                   embeddings_storage_mode='none')
 
 
@@ -73,7 +73,7 @@ def train_few_shot_model(path):
                              'NUM:volsize': 'question about number volume size',
                              'DESC:desc': 'question about description description'
                              }
-    whole_corpus: Corpus = TREC_50(label_name_map=label_name_map).downsample(0.1)
+    whole_corpus: Corpus = TREC_50(label_name_map=label_name_map)
 
     number_of_seen_examples = [0, 1, 2, 4, 8, 10, 100]
 
