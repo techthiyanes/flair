@@ -17,7 +17,7 @@ def train_base_model(corpus, path, document_embeddings):
     trainer.train(base_path=path,
                   learning_rate=0.02,
                   mini_batch_size=16,
-                  max_epochs=5,
+                  max_epochs=20,
                   embeddings_storage_mode='none')
 
 
@@ -134,7 +134,7 @@ def train_few_shot_model(path):
 
 
 def init_tars(path):
-    model_path = f"{path}/pretrained_model/best-model_epoch5.pt"
+    model_path = f"{path}/pretrained_model/best-model.pt"
     tars = TARSClassifier.load(model_path)
     return tars
 
@@ -218,7 +218,7 @@ if __name__ == "__main__":
                       }
 
     # 2. get the corpus
-    trec6: Corpus = TREC_6(label_name_map=label_name_map).downsample(0.1)
+    trec6: Corpus = TREC_6(label_name_map=label_name_map)
 
     path_model_mapping = {
         "bart-entailment":
@@ -240,7 +240,7 @@ if __name__ == "__main__":
 
     task = "trec6_to_trec50"
     for model_description, configuration in path_model_mapping.items():
-        experiment_path = f"testy/experiments_v2/{configuration['path']}/{task}"
-        #train_base_model(trec6, f"{experiment_path}/pretrained_model",
-        #                 document_embeddings=f"distilbert-base-uncased")
+        experiment_path = f"experiments_v2/{configuration['path']}/{task}"
+        train_base_model(trec6, f"{experiment_path}/pretrained_model",
+                         document_embeddings=f"{configuration['model']}")
         train_few_shot_model(experiment_path)

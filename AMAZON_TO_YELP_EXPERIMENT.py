@@ -196,4 +196,4 @@ if __name__ == "__main__":
     for model_description, configuration in path_model_mapping.items():
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
         train_base_model(amazon, f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
-        train_few_shot_model(experiment_path)
+        #train_few_shot_model(experiment_path)
