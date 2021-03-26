@@ -76,7 +76,7 @@ def get_corpora(name):
              'NUM:volsize': 'question about number volume size',
              'DESC:desc': 'question about description description'
             }
-        trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map)
+        trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map).downsample(0.04)
         train_split = Corpus(train=trec_full.train, dev=trec_full.dev)
         test_split = [x for x in trec_full.test]
 
@@ -103,6 +103,7 @@ def get_corpora(name):
         text_columns = [1,2]
         test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
         test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        test_split = test_split[:32]
 
     elif name == "DBPEDIA":
         # DBPEDIA CORPUS
@@ -129,7 +130,7 @@ def get_corpora(name):
             skip_header=False,
             delimiter=',',
             label_name_map=dbpedia_label_name_map
-        ).downsample(0.25)
+        ).downsample(0.01)
         #train_split = SentenceDataset([s for s in dbpedia_full.train])
         #dev_split = SentenceDataset([s for s in dbpedia_full.dev])
         #train_split = Corpus(train=train_split, dev=dev_split)
@@ -234,8 +235,9 @@ def eval_sequential_model(sentence_list, name, method, model):
         best_model = RefactoredTARSClassifier.load(best_model_path)
         corpus = [x._add_tars_assignment(name.lower()) for x in sentence_list]
 
-    outp = f"archive/{name}-{method}-{model}.txt"
-    best_model.evaluate(corpus, out_path=outp)
+    result, _ = best_model.evaluate(corpus)
+    with open(f"{name}-{method}-{model}.txt", "w") as f:
+        f.write(result.detailed_results)
 
 def train_multitask_model(corpora, configurations):
 
@@ -258,9 +260,8 @@ def train_multitask_model(corpora, configurations):
 
 if __name__ == "__main__":
     flair.device = "cuda:1"
-    for name, method, model in itertools.product(["TREC"], ["multitask_model"], ["2_bert_baseline"]):
+    for name, method, model in itertools.product(["TREC", "AGNEWS", "DBPEDIA", "AMAZON", "YELP"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
         eval_sequential_model(get_corpora(name), name, method, model)
-
     """
     path_model_mapping = {
         "bert-base-uncased":

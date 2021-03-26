@@ -1142,7 +1142,6 @@ class RefactoredTARSClassifier(flair.nn.Model):
         label_scores = self.forward(transformed_sentences)
         # Transform label_scores
         corpus_assignment = [s.tars_assignment["tars_assignment"][0].task_id for s in data_points]
-        print(corpus_assignment)
         transformed_scores = self._transform_tars_scores(label_scores, corpus_assignment)
 
         loss = None
@@ -1276,36 +1275,37 @@ class RefactoredTARSClassifier(flair.nn.Model):
                 target_names = []
                 for i in range(len(self.task_specific_attributes[corpus]["label_dictionary"])):
                     target_names.append(self.task_specific_attributes[corpus]["label_dictionary"].get_item_for_index(i))
-                classification_report = metrics.classification_report(y_true[corpus], y_pred[corpus], digits=4,
-                                                                      target_names=target_names, zero_division=0)
+                if y_true[corpus]:
+                    classification_report = metrics.classification_report(y_true[corpus], y_pred[corpus], digits=4,
+                                                                          target_names=target_names, zero_division=0)
 
-                # get scores
-                micro_f_score = round(metrics.fbeta_score(y_true[corpus], y_pred[corpus], beta=self.beta, average='micro', zero_division=0),
-                                      4)
-                accuracy_score = round(metrics.accuracy_score(y_true[corpus], y_pred[corpus]), 4)
-                macro_f_score = round(metrics.fbeta_score(y_true[corpus], y_pred[corpus], beta=self.beta, average='macro', zero_division=0),
-                                      4)
-                precision_score = round(metrics.precision_score(y_true[corpus], y_pred[corpus], average='macro', zero_division=0), 4)
-                recall_score = round(metrics.recall_score(y_true[corpus], y_pred[corpus], average='macro', zero_division=0), 4)
+                    # get scores
+                    micro_f_score = round(metrics.fbeta_score(y_true[corpus], y_pred[corpus], beta=self.beta, average='micro', zero_division=0),
+                                          4)
+                    accuracy_score = round(metrics.accuracy_score(y_true[corpus], y_pred[corpus]), 4)
+                    macro_f_score = round(metrics.fbeta_score(y_true[corpus], y_pred[corpus], beta=self.beta, average='macro', zero_division=0),
+                                          4)
+                    precision_score = round(metrics.precision_score(y_true[corpus], y_pred[corpus], average='macro', zero_division=0), 4)
+                    recall_score = round(metrics.recall_score(y_true[corpus], y_pred[corpus], average='macro', zero_division=0), 4)
 
-                detailed_result += (
-                        "\nResults:"
-                        f"\n- F-score (micro) {micro_f_score}"
-                        f"\n- F-score (macro) {macro_f_score}"
-                        f"\n- Accuracy {accuracy_score}"
-                        '\n\nBy class:\n' + classification_report
-                )
+                    detailed_result += (
+                            "\nResults:"
+                            f"\n- F-score (micro) {micro_f_score}"
+                            f"\n- F-score (macro) {macro_f_score}"
+                            f"\n- Accuracy {accuracy_score}"
+                            '\n\nBy class:\n' + classification_report
+                    )
 
-                # line for log file
-                if not self.multi_label:
-                    log_header += "ACCURACY"
-                    log_line += f"\t{accuracy_score}"
-                else:
-                    log_header += "PRECISION\tRECALL\tF1\tACCURACY"
-                    log_line += f"{precision_score}\t" \
-                               f"{recall_score}\t" \
-                               f"{macro_f_score}\t" \
-                               f"{accuracy_score}"
+                    # line for log file
+                    if not self.multi_label:
+                        log_header += "ACCURACY"
+                        log_line += f"\t{accuracy_score}"
+                    else:
+                        log_header += "PRECISION\tRECALL\tF1\tACCURACY"
+                        log_line += f"{precision_score}\t" \
+                                   f"{recall_score}\t" \
+                                   f"{macro_f_score}\t" \
+                                   f"{accuracy_score}"
 
             result = Result(
                 main_score=micro_f_score,
