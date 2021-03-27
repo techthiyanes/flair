@@ -92,7 +92,7 @@ def train_few_shot_model(path):
                               embeddings_storage_mode='none')
 
 def init_tars(path):
-    model_path = f"{path}/pretrained_model/best-model.pt"
+    model_path = f"{path}/pretrained_model/best-model_epoch5.pt"
     tars = TARSClassifier.load(model_path)
     return tars
 
@@ -195,5 +195,5 @@ if __name__ == "__main__":
     task = "amazon_to_yelp_NEW"
     for model_description, configuration in path_model_mapping.items():
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
-        train_base_model(amazon, f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
-        #train_few_shot_model(experiment_path)
+        #train_base_model(amazon, f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
+        train_few_shot_model(experiment_path)
