@@ -163,7 +163,7 @@ if __name__ == "__main__":
     # CHECK TASK
     # CHECK DOCUMENT EMBEDDINGS
     # CHECK CORPORA + TASK DESCRIPTION
-    flair.device = "cuda:2"
+    flair.device = "cuda:1"
     """
     label_name_map = {'1':'very negative restaurant sentiment',
                       '2':'negative restaurant sentiment',
@@ -182,6 +182,11 @@ if __name__ == "__main__":
     """
 
     path_model_mapping = {
+        "bert-entailment-standard":
+            {
+                "path": "1_entailment_standard",
+                "model": "distilbert_entailment_label_sep_text/pretrained_mnli/best_model"
+            },
         "bert-entailment-advanced":
             {
                 "path": "1_entailment_advanced",
@@ -189,7 +194,7 @@ if __name__ == "__main__":
             }
     }
 
-    task = "yelp_to_amazon"
+    task = "yelp_to_amazon_NEW"
     for model_description, configuration in path_model_mapping.items():
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
         #train_base_model(yelp, f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
