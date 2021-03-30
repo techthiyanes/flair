@@ -189,15 +189,10 @@ if __name__ == "__main__":
                                                    ).downsample(0.25)
 
     path_model_mapping = {
-        "bert-entailment-standard":
+        "bart-entailment-standard":
             {
-                "path": "1_entailment_standard_reversed",
-                "model": "entailment_label_sep_text/pretrained_mnli/best_model"
-            },
-        "bert-entailment-advanced":
-            {
-                "path": "1_entailment_advanced_reversed",
-                "model": "entailment_label_sep_text/pretrained_mnli_rte_fever/best_model"
+                "path": "1_entailment_bart",
+                "model": "facebook/bart-large-mnli"
             }
     }
 
@@ -205,4 +200,4 @@ if __name__ == "__main__":
     for model_description, configuration in path_model_mapping.items():
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
         train_base_model(dbpedia, f"{experiment_path}/pretrained_model", document_embeddings=f"{configuration['model']}")
-        train_few_shot_model(experiment_path)
+        #train_few_shot_model(experiment_path)
