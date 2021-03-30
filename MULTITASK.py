@@ -257,7 +257,7 @@ def train_multitask_model(corpora, configurations):
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":
-    flair.device = "cuda:0"
+    flair.device = "cuda:1"
     path_model_mapping = {
         "bert-base-uncased":
             {
