@@ -257,11 +257,8 @@ def train_multitask_model(corpora, configurations):
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":
-    flair.device = "cuda:2"
-    for name, method, model in itertools.product(["TREC"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
-        eval_sequential_model(get_corpora(name), name, method, model)
-    """
-        path_model_mapping = {
+    flair.device = "cuda:0"
+    path_model_mapping = {
         "bert-base-uncased":
             {
                 "path" : "2_bert_baseline",
@@ -283,8 +280,10 @@ if __name__ == "__main__":
         corpora[name] = get_corpora(name)
     for key, configurations in path_model_mapping.items():
         train_multitask_model(corpora, configurations)
+
     """
-    """
+        for name, method, model in itertools.product(["TREC"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
+        eval_sequential_model(get_corpora(name), name, method, model)
     for key, configurations in path_model_mapping.items():
         if key == "bert-base-uncased" and name == "AMAZON":
             pass
