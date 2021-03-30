@@ -225,7 +225,7 @@ def train_sequential_model(corpora, task_name, configurations):
 
 def eval_sequential_model(sentence_list, name, method, model):
     if method == "sequential_model":
-        best_model_path = f"experiments_v2/{model}/{method}/after_AGNEWS/best-model.pt"
+        best_model_path = f"experiments_v2/{model}/{method}/after_TREC/best-model.pt"
         best_model = TARSClassifier.load(best_model_path)
         best_model.switch_to_task(name)
         corpus = sentence_list
