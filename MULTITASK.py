@@ -9,6 +9,8 @@ from flair.datasets import TREC_50, CSVClassificationCorpus, SentenceDataset
 import random
 import itertools
 
+base_path = "experiments_v2"
+
 def make_text(data_point, text_columns):
     return [data_point[0], " ".join(data_point[text_column] for text_column in text_columns)]
 
@@ -17,188 +19,202 @@ def make_sentence(data_point, tokenizer):
     s.add_label("class", data_point[0])
     return s
 
-def get_corpora(name):
-    random.seed(42)
+def get_trec(train: bool = False, test: bool = False):
+    trec50_label_name_map = {
+        'ENTY:sport': 'question about entity sport',
+         'ENTY:dismed': 'question about entity diseases medicine',
+         'LOC:city': 'question about location city',
+         'DESC:reason': 'question about description reasons',
+         'NUM:other': 'question about number other',
+         'LOC:state': 'question about location state',
+         'NUM:speed': 'question about number speed',
+         'NUM:ord': 'question about number order ranks',
+         'ENTY:event': 'question about entity event',
+         'ENTY:substance': 'question about entity element substance',
+         'NUM:perc': 'question about number percentage fractions',
+         'ENTY:product': 'question about entity product',
+         'ENTY:animal': 'question about entity animal',
+         'DESC:manner': 'question about description manner of action',
+         'ENTY:cremat': 'question about entity creative pieces inventions books',
+         'ENTY:color': 'question about entity color',
+         'ENTY:techmeth': 'question about entity technique method',
+         'NUM:dist': 'question about number distance measure',
+         'NUM:weight': 'question about number weight',
+         'LOC:mount': 'question about location mountains',
+         'HUM:title': 'question about person title',
+         'HUM:gr': 'question about person group organization of persons',
+         'HUM:desc': 'question about person description',
+         'ABBR:abb': 'question about abbreviation abbreviation',
+         'ENTY:currency': 'question about entity currency',
+         'DESC:def': 'question about description definition',
+         'NUM:code': 'question about number code',
+         'LOC:other': 'question about location other',
+         'ENTY:other': 'question about entity other',
+         'ENTY:body': 'question about entity body organ',
+         'ENTY:instru': 'question about entity musical instrument',
+         'ENTY:termeq': 'question about entity term equivalent',
+         'NUM:money': 'question about number money prices',
+         'NUM:temp': 'question about number temperature',
+         'LOC:country': 'question about location country',
+         'ABBR:exp': 'question about abbreviation expression',
+         'ENTY:symbol': 'question about entity symbol signs',
+         'ENTY:religion': 'question about entity religion',
+         'HUM:ind': 'question about person individual',
+         'ENTY:letter': 'question about entity letters characters',
+         'NUM:date': 'question about number date',
+         'ENTY:lang': 'question about entity language',
+         'ENTY:veh': 'question about entity vehicle',
+         'NUM:count': 'question about number count',
+         'ENTY:word': 'question about entity word special property',
+         'NUM:period': 'question about number period lasting time',
+         'ENTY:plant': 'question about entity plant',
+         'ENTY:food': 'question about entity food',
+         'NUM:volsize': 'question about number volume size',
+         'DESC:desc': 'question about description description'
+        }
+    trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map)
+    train_split = Corpus(train=trec_full.train, dev=trec_full.dev)
+    test_split = [x for x in trec_full.test]
 
+    if train and test:
+        return trec_full
+    elif train and not test:
+        return train_split
+    elif not train and test:
+        return test_split
+
+def get_agnews(train: bool = False, test: bool = False):
+    random.seed(42)
     tokenizer = SegtokTokenizer()
 
-    if name == "TREC":
-        # TREC50 CORPUS
-        trec50_label_name_map = {
-            'ENTY:sport': 'question about entity sport',
-             'ENTY:dismed': 'question about entity diseases medicine',
-             'LOC:city': 'question about location city',
-             'DESC:reason': 'question about description reasons',
-             'NUM:other': 'question about number other',
-             'LOC:state': 'question about location state',
-             'NUM:speed': 'question about number speed',
-             'NUM:ord': 'question about number order ranks',
-             'ENTY:event': 'question about entity event',
-             'ENTY:substance': 'question about entity element substance',
-             'NUM:perc': 'question about number percentage fractions',
-             'ENTY:product': 'question about entity product',
-             'ENTY:animal': 'question about entity animal',
-             'DESC:manner': 'question about description manner of action',
-             'ENTY:cremat': 'question about entity creative pieces inventions books',
-             'ENTY:color': 'question about entity color',
-             'ENTY:techmeth': 'question about entity technique method',
-             'NUM:dist': 'question about number distance measure',
-             'NUM:weight': 'question about number weight',
-             'LOC:mount': 'question about location mountains',
-             'HUM:title': 'question about person title',
-             'HUM:gr': 'question about person group organization of persons',
-             'HUM:desc': 'question about person description',
-             'ABBR:abb': 'question about abbreviation abbreviation',
-             'ENTY:currency': 'question about entity currency',
-             'DESC:def': 'question about description definition',
-             'NUM:code': 'question about number code',
-             'LOC:other': 'question about location other',
-             'ENTY:other': 'question about entity other',
-             'ENTY:body': 'question about entity body organ',
-             'ENTY:instru': 'question about entity musical instrument',
-             'ENTY:termeq': 'question about entity term equivalent',
-             'NUM:money': 'question about number money prices',
-             'NUM:temp': 'question about number temperature',
-             'LOC:country': 'question about location country',
-             'ABBR:exp': 'question about abbreviation expression',
-             'ENTY:symbol': 'question about entity symbol signs',
-             'ENTY:religion': 'question about entity religion',
-             'HUM:ind': 'question about person individual',
-             'ENTY:letter': 'question about entity letters characters',
-             'NUM:date': 'question about number date',
-             'ENTY:lang': 'question about entity language',
-             'ENTY:veh': 'question about entity vehicle',
-             'NUM:count': 'question about number count',
-             'ENTY:word': 'question about entity word special property',
-             'NUM:period': 'question about number period lasting time',
-             'ENTY:plant': 'question about entity plant',
-             'ENTY:food': 'question about entity food',
-             'NUM:volsize': 'question about number volume size',
-             'DESC:desc': 'question about description description'
-            }
-        trec_full: Corpus = TREC_50(label_name_map=trec50_label_name_map)
-        #train_split = Corpus(train=trec_full.train, dev=trec_full.dev)
-        test_split = [x for x in trec_full.test]
+    agnews_label_name_map = {
+        '1': 'World',
+          '2': 'Sports',
+          '3': 'Business',
+          '4': 'Science Technology'
+    }
+    column_name_map = {0: "label", 1: "text", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
+    agnews_full: Corpus = CSVClassificationCorpus(
+        corpus_path,
+        column_name_map,
+        skip_header=False,
+        delimiter=',',
+        label_name_map=agnews_label_name_map
+    )
+    train_split = SentenceDataset([s for s in agnews_full.train])
+    dev_split = SentenceDataset([s for s in agnews_full.dev])
+    train_split = Corpus(train=train_split, dev=dev_split)
+    text_columns = [1,2]
+    test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
+    test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
-    elif name == "AGNEWS":
-        # AGNEWS CORPUS
-        agnews_label_name_map = {
-            '1': 'World',
-              '2': 'Sports',
-              '3': 'Business',
-              '4': 'Science Technology'
-        }
-        column_name_map = {0: "label", 1: "text", 2: "text"}
-        corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
-        agnews_full: Corpus = CSVClassificationCorpus(
-            corpus_path,
-            column_name_map,
-            skip_header=False,
-            delimiter=',',
-            label_name_map=agnews_label_name_map
-        )
-        train_split = SentenceDataset([s for s in agnews_full.train])
-        dev_split = SentenceDataset([s for s in agnews_full.dev])
-        train_split = Corpus(train=train_split, dev=dev_split)
-        #text_columns = [1,2]
-        #test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
-        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+    if train and not test:
+        return train_split
+    elif not train and test:
+        return test_split
 
-    elif name == "DBPEDIA":
-        # DBPEDIA CORPUS
-        dbpedia_label_name_map = {'1': 'Company',
-                                  '2': 'Educational Institution',
-                                  '3': 'Artist',
-                                  '4': 'Athlete',
-                                  '5': 'Office Holder',
-                                  '6': 'Mean Of Transportation',
-                                  '7': 'Building',
-                                  '8': 'Natural Place',
-                                  '9': 'Village',
-                                  '10': 'Animal',
-                                  '11': 'Plant',
-                                  '12': 'Album',
-                                  '13': 'Film',
-                                  '14': 'Written Work'
-                                  }
-        column_name_map = {0: "label", 1: "text", 2: "text"}
-        corpus_path = f"{flair.cache_root}/datasets/dbpedia_csv"
-        dbpedia_full: Corpus = CSVClassificationCorpus(
-            corpus_path,
-            column_name_map,
-            skip_header=False,
-            delimiter=',',
-            label_name_map=dbpedia_label_name_map
-        ).downsample(0.25)
-        train_split = SentenceDataset([s for s in dbpedia_full.train])
-        dev_split = SentenceDataset([s for s in dbpedia_full.dev])
-        train_split = Corpus(train=train_split, dev=dev_split)
-        #text_columns = [1,2]
-        #downsampled_test = random.sample(dbpedia_full.test.dataset.raw_data, 12500)
-        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+def get_dbpedia(train: bool = False, test: bool = False):
+    random.seed(42)
+    tokenizer = SegtokTokenizer()
 
-    # AMAZON CORPUS
-    elif name == "AMAZON":
-        amazon_label_name_map = {'1': 'very negative product sentiment',
-                          '2': 'negative product sentiment',
-                          '3': 'neutral product sentiment',
-                          '4': 'positive product sentiment',
-                          '5': 'very positive product sentiment'
-                          }
-        column_name_map = {0: "label", 2: "text"}
-        corpus_path = f"{flair.cache_root}/datasets/amazon_review_full_csv"
-        amazon_full: Corpus = CSVClassificationCorpus(
-            corpus_path,
-            column_name_map,
-            skip_header=False,
-            delimiter=',',
-            label_name_map=amazon_label_name_map
-        ).downsample(0.05)
-        train_split = SentenceDataset([s for s in amazon_full.train])
-        dev_split = SentenceDataset([s for s in amazon_full.dev])
-        train_split = Corpus(train=train_split, dev=dev_split)
-        #text_columns = [2]
-        #downsampled_test = random.sample(amazon_full.test.dataset.raw_data, 12500)
-        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+    dbpedia_label_name_map = {'1': 'Company',
+                              '2': 'Educational Institution',
+                              '3': 'Artist',
+                              '4': 'Athlete',
+                              '5': 'Office Holder',
+                              '6': 'Mean Of Transportation',
+                              '7': 'Building',
+                              '8': 'Natural Place',
+                              '9': 'Village',
+                              '10': 'Animal',
+                              '11': 'Plant',
+                              '12': 'Album',
+                              '13': 'Film',
+                              '14': 'Written Work'
+                              }
+    column_name_map = {0: "label", 1: "text", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/dbpedia_csv"
+    dbpedia_full: Corpus = CSVClassificationCorpus(
+        corpus_path,
+        column_name_map,
+        skip_header=False,
+        delimiter=',',
+        label_name_map=dbpedia_label_name_map
+    ).downsample(0.25)
+    train_split = SentenceDataset([s for s in dbpedia_full.train])
+    dev_split = SentenceDataset([s for s in dbpedia_full.dev])
+    train_split = Corpus(train=train_split, dev=dev_split)
+    text_columns = [1,2]
+    test_split_sentences = [make_text(data_point, text_columns) for data_point in dbpedia_full.test.dataset.raw_data]
+    test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
+    if train and not test:
+        return train_split
+    elif not train and test:
+        return test_split
 
-    elif name == "YELP":
-        # YELP CORPUS
-        yelp_label_name_map = {'1': 'very negative restaurant sentiment',
-                          '2': 'negative restaurant sentiment',
-                          '3': 'neutral restaurant sentiment',
-                          '4': 'positive restaurant sentiment',
-                          '5': 'very positive restaurant sentiment'
-                          }
-        column_name_map = {0: "label", 1: "text"}
-        corpus_path = f"{flair.cache_root}/datasets/yelp_review_full_csv"
-        yelp_full: Corpus = CSVClassificationCorpus(
-            corpus_path,
-            column_name_map,
-            skip_header=False,
-            delimiter=',',
-            label_name_map=yelp_label_name_map
-        ).downsample(0.25)
-        train_split = SentenceDataset([s for s in yelp_full.train])
-        dev_split = SentenceDataset([s for s in yelp_full.dev])
-        train_split = Corpus(train=train_split, dev=dev_split)
-        #text_columns = [1]
-        #downsampled_test = random.sample(yelp_full.test.dataset.raw_data, 12500)
-        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+def get_amazon(train: bool = False, test: bool = False):
+    random.seed(42)
+    tokenizer = SegtokTokenizer()
 
-    else:
-        raise Exception("Corpus not found.")
-    """
-    corpus = {name: {
-        "train": train_split,
-        "test": test_split
-    }}
-    """
+    amazon_label_name_map = {'1': 'very negative product sentiment',
+                      '2': 'negative product sentiment',
+                      '3': 'neutral product sentiment',
+                      '4': 'positive product sentiment',
+                      '5': 'very positive product sentiment'
+                      }
+    column_name_map = {0: "label", 2: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/amazon_review_full_csv"
+    amazon_full: Corpus = CSVClassificationCorpus(
+        corpus_path,
+        column_name_map,
+        skip_header=False,
+        delimiter=',',
+        label_name_map=amazon_label_name_map
+    ).downsample(0.05)
+    train_split = SentenceDataset([s for s in amazon_full.train])
+    dev_split = SentenceDataset([s for s in amazon_full.dev])
+    train_split = Corpus(train=train_split, dev=dev_split)
+    text_columns = [2]
+    test_split_sentences = [make_text(data_point, text_columns) for data_point in amazon_full.test.dataset.raw_data]
+    test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
-    return train_split
+    if train and not test:
+        return train_split
+    elif not train and test:
+        return test_split
+
+def get_yelp(train: bool = False, test: bool = False):
+    random.seed(42)
+    tokenizer = SegtokTokenizer()
+
+    yelp_label_name_map = {'1': 'very negative restaurant sentiment',
+                      '2': 'negative restaurant sentiment',
+                      '3': 'neutral restaurant sentiment',
+                      '4': 'positive restaurant sentiment',
+                      '5': 'very positive restaurant sentiment'
+                      }
+    column_name_map = {0: "label", 1: "text"}
+    corpus_path = f"{flair.cache_root}/datasets/yelp_review_full_csv"
+    yelp_full: Corpus = CSVClassificationCorpus(
+        corpus_path,
+        column_name_map,
+        skip_header=False,
+        delimiter=',',
+        label_name_map=yelp_label_name_map
+    ).downsample(0.25)
+    train_split = SentenceDataset([s for s in yelp_full.train])
+    dev_split = SentenceDataset([s for s in yelp_full.dev])
+    train_split = Corpus(train=train_split, dev=dev_split)
+    text_columns = [1]
+    test_split_sentences = [make_text(data_point, text_columns) for data_point in yelp_full.test.dataset.raw_data]
+    test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+
+    if train and not test:
+        return train_split
+    elif not train and test:
+        return test_split
 
 def train_sequential_model(corpora, task_name, configurations):
     if task_name == "AMAZON":
@@ -223,7 +239,7 @@ def train_sequential_model(corpora, task_name, configurations):
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
-def eval_sequential_model(sentence_list, name, method, model):
+def eval_sequential_model(sentence_list, name, method, model, zeroshot = False):
     if method == "sequential_model":
         best_model_path = f"experiments_v2/{model}/{method}/after_TREC/best-model.pt"
         best_model = TARSClassifier.load(best_model_path)
@@ -234,80 +250,79 @@ def eval_sequential_model(sentence_list, name, method, model):
         best_model = RefactoredTARSClassifier.load(best_model_path)
         corpus = [x._add_tars_assignment(name.lower()) for x in sentence_list]
 
-    label_name_map = {'ENTY:sport': 'question about entity sport',
-                      'ENTY:dismed': 'question about entity diseases medicine',
-                      'LOC:city': 'question about location city',
-                      'DESC:reason': 'question about description reasons',
-                      'NUM:other': 'question about number other',
-                      'LOC:state': 'question about location state',
-                      'NUM:speed': 'question about number speed',
-                      'NUM:ord': 'question about number order ranks',
-                      'ENTY:event': 'question about entity event',
-                      'ENTY:substance': 'question about entity element substance',
-                      'NUM:perc': 'question about number percentage fractions',
-                      'ENTY:product': 'question about entity product',
-                      'ENTY:animal': 'question about entity animal',
-                      'DESC:manner': 'question about description manner of action',
-                      'ENTY:cremat': 'question about entity creative pieces inventions books',
-                      'ENTY:color': 'question about entity color',
-                      'ENTY:techmeth': 'question about entity technique method',
-                      'NUM:dist': 'question about number distance measure',
-                      'NUM:weight': 'question about number weight',
-                      'LOC:mount': 'question about location mountains',
-                      'HUM:title': 'question about person title',
-                      'HUM:gr': 'question about person group organization of persons',
-                      'HUM:desc': 'question about person description',
-                      'ABBR:abb': 'question about abbreviation abbreviation',
-                      'ENTY:currency': 'question about entity currency',
-                      'DESC:def': 'question about description definition',
-                      'NUM:code': 'question about number code',
-                      'LOC:other': 'question about location other',
-                      'ENTY:other': 'question about entity other',
-                      'ENTY:body': 'question about entity body organ',
-                      'ENTY:instru': 'question about entity musical instrument',
-                      'ENTY:termeq': 'question about entity term equivalent',
-                      'NUM:money': 'question about number money prices',
-                      'NUM:temp': 'question about number temperature',
-                      'LOC:country': 'question about location country',
-                      'ABBR:exp': 'question about abbreviation expression',
-                      'ENTY:symbol': 'question about entity symbol signs',
-                      'ENTY:religion': 'question about entity religion',
-                      'HUM:ind': 'question about person individual',
-                      'ENTY:letter': 'question about entity letters characters',
-                      'NUM:date': 'question about number date',
-                      'ENTY:lang': 'question about entity language',
-                      'ENTY:veh': 'question about entity vehicle',
-                      'NUM:count': 'question about number count',
-                      'ENTY:word': 'question about entity word special property',
-                      'NUM:period': 'question about number period lasting time',
-                      'ENTY:plant': 'question about entity plant',
-                      'ENTY:food': 'question about entity food',
-                      'NUM:volsize': 'question about number volume size',
-                      'DESC:desc': 'question about description description'
-                      }
+    if zeroshot:
+        label_name_map = {'ENTY:sport': 'question about entity sport',
+                          'ENTY:dismed': 'question about entity diseases medicine',
+                          'LOC:city': 'question about location city',
+                          'DESC:reason': 'question about description reasons',
+                          'NUM:other': 'question about number other',
+                          'LOC:state': 'question about location state',
+                          'NUM:speed': 'question about number speed',
+                          'NUM:ord': 'question about number order ranks',
+                          'ENTY:event': 'question about entity event',
+                          'ENTY:substance': 'question about entity element substance',
+                          'NUM:perc': 'question about number percentage fractions',
+                          'ENTY:product': 'question about entity product',
+                          'ENTY:animal': 'question about entity animal',
+                          'DESC:manner': 'question about description manner of action',
+                          'ENTY:cremat': 'question about entity creative pieces inventions books',
+                          'ENTY:color': 'question about entity color',
+                          'ENTY:techmeth': 'question about entity technique method',
+                          'NUM:dist': 'question about number distance measure',
+                          'NUM:weight': 'question about number weight',
+                          'LOC:mount': 'question about location mountains',
+                          'HUM:title': 'question about person title',
+                          'HUM:gr': 'question about person group organization of persons',
+                          'HUM:desc': 'question about person description',
+                          'ABBR:abb': 'question about abbreviation abbreviation',
+                          'ENTY:currency': 'question about entity currency',
+                          'DESC:def': 'question about description definition',
+                          'NUM:code': 'question about number code',
+                          'LOC:other': 'question about location other',
+                          'ENTY:other': 'question about entity other',
+                          'ENTY:body': 'question about entity body organ',
+                          'ENTY:instru': 'question about entity musical instrument',
+                          'ENTY:termeq': 'question about entity term equivalent',
+                          'NUM:money': 'question about number money prices',
+                          'NUM:temp': 'question about number temperature',
+                          'LOC:country': 'question about location country',
+                          'ABBR:exp': 'question about abbreviation expression',
+                          'ENTY:symbol': 'question about entity symbol signs',
+                          'ENTY:religion': 'question about entity religion',
+                          'HUM:ind': 'question about person individual',
+                          'ENTY:letter': 'question about entity letters characters',
+                          'NUM:date': 'question about number date',
+                          'ENTY:lang': 'question about entity language',
+                          'ENTY:veh': 'question about entity vehicle',
+                          'NUM:count': 'question about number count',
+                          'ENTY:word': 'question about entity word special property',
+                          'NUM:period': 'question about number period lasting time',
+                          'ENTY:plant': 'question about entity plant',
+                          'ENTY:food': 'question about entity food',
+                          'NUM:volsize': 'question about number volume size',
+                          'DESC:desc': 'question about description description'
+                          }
 
-    tp = 0
-    all = 0
-    classes = [key for key in label_name_map.values()]
-    best_model.predict_zero_shot(corpus, classes, multi_label=False)
-    for sentence in corpus:
-        true = sentence.get_labels("class")[0]
-        pred = sentence.get_labels("label")[0]
-        if pred:
-            if pred.value == true.value:
-                tp += 1
-        all += 1
+        tp = 0
+        all = 0
+        classes = [key for key in label_name_map.values()]
+        best_model.predict_zero_shot(corpus, classes, multi_label=False)
+        for sentence in corpus:
+            true = sentence.get_labels("class")[0]
+            pred = sentence.get_labels("label")[0]
+            if pred:
+                if pred.value == true.value:
+                    tp += 1
+            all += 1
 
-    with open(f"/experiments_v2/2_results/holdoneout/{name}-{method}-{model}.txt", "w") as file:
-        file.write(f"Accuracy: {tp / all} \n")
-        file.write(f"Correct predictions: {tp} \n")
-        file.write(f"Total labels: {all} \n")
-    #with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
-    #    f.write(result.detailed_results)
-
-    #result, _ = best_model.evaluate(corpus)
-    #with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
-    #    f.write(result.detailed_results)
+        with open(f"/experiments_v2/2_results/holdoneout/{name}-{method}-{model}.txt", "w") as file:
+            file.write(f"Accuracy: {tp / all} \n")
+            file.write(f"Correct predictions: {tp} \n")
+            file.write(f"Total labels: {all} \n")
+    else:
+        result, _ = best_model.evaluate(corpus)
+        with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
+            f.write(result.detailed_results)
 
 def train_multitask_model(corpora, configurations):
 
@@ -329,30 +344,13 @@ def train_multitask_model(corpora, configurations):
 
 if __name__ == "__main__":
     flair.device = "cuda:2"
-
     for name, method, model in itertools.product(["TREC"], ["sequential_model"],
                                                  ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
-        eval_sequential_model(get_corpora(name), name, method, model)
+        eval_sequential_model(get_trec(test=True), name, method, model)
 
 
     """
-    path_model_mapping = {
-        "bert-base-uncased":
-            {
-                "path" : "2_bert_baseline",
-                "model": "distilbert-base-uncased"
-            },
-        "bert-entailment-standard":
-            {
-                "path": "2_entailment_standard",
-                "model": "distilbert_entailment_label_sep_text/pretrained_mnli/best_model"
-            },
-        "bert-entailment-advanced":
-            {
-                "path": "2_entailment_advanced",
-                "model": "distilbert_entailment_label_sep_text/pretrained_mnli_rte_fever/best_model"
-            }
-    }
+
     corpora = {}
     for name in ["AMAZON", "YELP", "DBPEDIA", "AGNEWS"]:
         corpora[name] = get_corpora(name)
