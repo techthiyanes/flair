@@ -196,15 +196,10 @@ if __name__ == "__main__":
                                                    )
 
     path_model_mapping = {
-        "bert-entailment-standard":
+        "bart-entailment-standard":
             {
-                "path": "1_entailment_standard",
-                "model": "entailment_text_sep_label/pretrained_mnli/best_model"
-            },
-        "bert-entailment-advanced":
-            {
-                "path": "1_entailment_advanced",
-                "model": "entailment_text_sep_label/pretrained_mnli_rte_fever/best_model"
+                "path": "1_entailment_bart",
+                "model": "facebook/bart-large-mnli"
             }
     }
 
@@ -213,5 +208,5 @@ if __name__ == "__main__":
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
         train_base_model(agnews, f"{experiment_path}/pretrained_model",
                          document_embeddings=f"{configuration['model']}")
-        train_few_shot_model(experiment_path)
+        #train_few_shot_model(experiment_path)
 
