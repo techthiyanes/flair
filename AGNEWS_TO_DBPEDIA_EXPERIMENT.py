@@ -17,7 +17,8 @@ def train_base_model(corpus, path, document_embeddings):
     # 5. start the training
     trainer.train(base_path=path,
                   learning_rate=0.02,
-                  mini_batch_size=16,
+                  mini_batch_size=8,
+                  mini_batch_chunk_size=2,
                   max_epochs=20,
                   embeddings_storage_mode='none')
 
@@ -100,8 +101,8 @@ def train_few_shot_model(path):
 
                 trainer.train(base_path=outpath,  # path to store the model artifacts
                               learning_rate=0.02,  # use very small learning rate
-                              mini_batch_size=16,
-                              mini_batch_chunk_size=4,
+                              mini_batch_size=8,
+                              mini_batch_chunk_size=2,
                               max_epochs=20,
                               embeddings_storage_mode='none')
 
