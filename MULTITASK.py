@@ -241,7 +241,7 @@ def train_sequential_model(corpora, task_name, configurations):
 
 def eval_sequential_model(sentence_list, name, method, model, zeroshot = False):
     if method == "sequential_model":
-        best_model_path = f"experiments_v2/{model}/{method}/after_TREC/best-model.pt"
+        best_model_path = f"experiments_v2/{model}/{method}/after_AGNEWS/best-model.pt"
         best_model = TARSClassifier.load(best_model_path)
         best_model.switch_to_task(name)
         corpus = sentence_list
@@ -314,14 +314,16 @@ def eval_sequential_model(sentence_list, name, method, model, zeroshot = False):
                 if pred.value == true.value:
                     tp += 1
             all += 1
-
-        with open(f"/experiments_v2/2_results/holdoneout/{name}-{method}-{model}.txt", "w") as file:
+        print(f"Accuracy: {tp / all} \n")
+        print(f"Correct predictions: {tp} \n")
+        print(f"Total labels: {all} \n")
+        with open(f"new_results/{name}-{method}-{model}.txt", "w") as file:
             file.write(f"Accuracy: {tp / all} \n")
             file.write(f"Correct predictions: {tp} \n")
             file.write(f"Total labels: {all} \n")
     else:
         result, _ = best_model.evaluate(corpus)
-        with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
+        with open(f"new_results/{name}-{method}-{model}.txt", "w") as f:
             f.write(result.detailed_results)
 
 def train_multitask_model(corpora, configurations):
@@ -346,7 +348,7 @@ if __name__ == "__main__":
     flair.device = "cuda:2"
     for name, method, model in itertools.product(["TREC"], ["sequential_model"],
                                                  ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
-        eval_sequential_model(get_trec(test=True), name, method, model)
+        eval_sequential_model(get_trec(test=True), name, method, model, zeroshot=True)
 
 
     """
