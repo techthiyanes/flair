@@ -97,12 +97,12 @@ def get_corpora(name):
             delimiter=',',
             label_name_map=agnews_label_name_map
         )
-        #train_split = SentenceDataset([s for s in agnews_full.train])
-        #dev_split = SentenceDataset([s for s in agnews_full.dev])
-        #train_split = Corpus(train=train_split, dev=dev_split)
-        text_columns = [1,2]
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
-        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        train_split = SentenceDataset([s for s in agnews_full.train])
+        dev_split = SentenceDataset([s for s in agnews_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [1,2]
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in agnews_full.test.raw_data]
+        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
     elif name == "DBPEDIA":
         # DBPEDIA CORPUS
@@ -129,14 +129,14 @@ def get_corpora(name):
             skip_header=False,
             delimiter=',',
             label_name_map=dbpedia_label_name_map
-        ).downsample(0.01)
-        #train_split = SentenceDataset([s for s in dbpedia_full.train])
-        #dev_split = SentenceDataset([s for s in dbpedia_full.dev])
-        #train_split = Corpus(train=train_split, dev=dev_split)
-        text_columns = [1,2]
-        downsampled_test = random.sample(dbpedia_full.test.dataset.raw_data, 12500)
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        ).downsample(0.25)
+        train_split = SentenceDataset([s for s in dbpedia_full.train])
+        dev_split = SentenceDataset([s for s in dbpedia_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [1,2]
+        #downsampled_test = random.sample(dbpedia_full.test.dataset.raw_data, 12500)
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
+        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
     # AMAZON CORPUS
     elif name == "AMAZON":
@@ -154,14 +154,14 @@ def get_corpora(name):
             skip_header=False,
             delimiter=',',
             label_name_map=amazon_label_name_map
-        ).downsample(0.03)
-        #train_split = SentenceDataset([s for s in amazon_full.train])
-        #dev_split = SentenceDataset([s for s in amazon_full.dev])
-        #train_split = Corpus(train=train_split, dev=dev_split)
-        text_columns = [2]
-        downsampled_test = random.sample(amazon_full.test.dataset.raw_data, 12500)
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        ).downsample(0.05)
+        train_split = SentenceDataset([s for s in amazon_full.train])
+        dev_split = SentenceDataset([s for s in amazon_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [2]
+        #downsampled_test = random.sample(amazon_full.test.dataset.raw_data, 12500)
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
+        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
 
     elif name == "YELP":
@@ -180,14 +180,14 @@ def get_corpora(name):
             skip_header=False,
             delimiter=',',
             label_name_map=yelp_label_name_map
-        ).downsample(0.1)
-        #train_split = SentenceDataset([s for s in yelp_full.train])
-        #dev_split = SentenceDataset([s for s in yelp_full.dev])
-        #train_split = Corpus(train=train_split, dev=dev_split)
-        text_columns = [1]
-        downsampled_test = random.sample(yelp_full.test.dataset.raw_data, 12500)
-        test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
-        test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
+        ).downsample(0.25)
+        train_split = SentenceDataset([s for s in yelp_full.train])
+        dev_split = SentenceDataset([s for s in yelp_full.dev])
+        train_split = Corpus(train=train_split, dev=dev_split)
+        #text_columns = [1]
+        #downsampled_test = random.sample(yelp_full.test.dataset.raw_data, 12500)
+        #test_split_sentences = [make_text(data_point, text_columns) for data_point in downsampled_test]
+        #test_split = [make_sentence(data_point, tokenizer) for data_point in test_split_sentences]
 
     else:
         raise Exception("Corpus not found.")
@@ -198,7 +198,7 @@ def get_corpora(name):
     }}
     """
 
-    return test_split
+    return train_split
 
 def train_sequential_model(corpora, task_name, configurations):
     if task_name == "AMAZON":
