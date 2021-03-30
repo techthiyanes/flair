@@ -234,9 +234,80 @@ def eval_sequential_model(sentence_list, name, method, model):
         best_model = RefactoredTARSClassifier.load(best_model_path)
         corpus = [x._add_tars_assignment(name.lower()) for x in sentence_list]
 
-    result, _ = best_model.evaluate(corpus)
-    with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
-        f.write(result.detailed_results)
+    label_name_map = {'ENTY:sport': 'question about entity sport',
+                      'ENTY:dismed': 'question about entity diseases medicine',
+                      'LOC:city': 'question about location city',
+                      'DESC:reason': 'question about description reasons',
+                      'NUM:other': 'question about number other',
+                      'LOC:state': 'question about location state',
+                      'NUM:speed': 'question about number speed',
+                      'NUM:ord': 'question about number order ranks',
+                      'ENTY:event': 'question about entity event',
+                      'ENTY:substance': 'question about entity element substance',
+                      'NUM:perc': 'question about number percentage fractions',
+                      'ENTY:product': 'question about entity product',
+                      'ENTY:animal': 'question about entity animal',
+                      'DESC:manner': 'question about description manner of action',
+                      'ENTY:cremat': 'question about entity creative pieces inventions books',
+                      'ENTY:color': 'question about entity color',
+                      'ENTY:techmeth': 'question about entity technique method',
+                      'NUM:dist': 'question about number distance measure',
+                      'NUM:weight': 'question about number weight',
+                      'LOC:mount': 'question about location mountains',
+                      'HUM:title': 'question about person title',
+                      'HUM:gr': 'question about person group organization of persons',
+                      'HUM:desc': 'question about person description',
+                      'ABBR:abb': 'question about abbreviation abbreviation',
+                      'ENTY:currency': 'question about entity currency',
+                      'DESC:def': 'question about description definition',
+                      'NUM:code': 'question about number code',
+                      'LOC:other': 'question about location other',
+                      'ENTY:other': 'question about entity other',
+                      'ENTY:body': 'question about entity body organ',
+                      'ENTY:instru': 'question about entity musical instrument',
+                      'ENTY:termeq': 'question about entity term equivalent',
+                      'NUM:money': 'question about number money prices',
+                      'NUM:temp': 'question about number temperature',
+                      'LOC:country': 'question about location country',
+                      'ABBR:exp': 'question about abbreviation expression',
+                      'ENTY:symbol': 'question about entity symbol signs',
+                      'ENTY:religion': 'question about entity religion',
+                      'HUM:ind': 'question about person individual',
+                      'ENTY:letter': 'question about entity letters characters',
+                      'NUM:date': 'question about number date',
+                      'ENTY:lang': 'question about entity language',
+                      'ENTY:veh': 'question about entity vehicle',
+                      'NUM:count': 'question about number count',
+                      'ENTY:word': 'question about entity word special property',
+                      'NUM:period': 'question about number period lasting time',
+                      'ENTY:plant': 'question about entity plant',
+                      'ENTY:food': 'question about entity food',
+                      'NUM:volsize': 'question about number volume size',
+                      'DESC:desc': 'question about description description'
+                      }
+
+    tp = 0
+    all = 0
+    classes = [key for key in label_name_map.values()]
+    best_model.predict_zero_shot(corpus, classes, multi_label=False)
+    for sentence in corpus:
+        true = sentence.get_labels("class")[0]
+        pred = sentence.get_labels("label")[0]
+        if pred:
+            if pred.value == true.value:
+                tp += 1
+        all += 1
+
+    with open(f"/experiments_v2/2_results/holdoneout/{name}-{method}-{model}.txt", "w") as file:
+        file.write(f"Accuracy: {tp / all} \n")
+        file.write(f"Correct predictions: {tp} \n")
+        file.write(f"Total labels: {all} \n")
+    #with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
+    #    f.write(result.detailed_results)
+
+    #result, _ = best_model.evaluate(corpus)
+    #with open(f"experiments_v2/2_results/{name}-{method}-{model}.txt", "w") as f:
+    #    f.write(result.detailed_results)
 
 def train_multitask_model(corpora, configurations):
 
@@ -257,7 +328,14 @@ def train_multitask_model(corpora, configurations):
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":
-    flair.device = "cuda:1"
+    flair.device = "cuda:2"
+
+    for name, method, model in itertools.product(["TREC"], ["sequential_model"],
+                                                 ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
+        eval_sequential_model(get_corpora(name), name, method, model)
+
+
+    """
     path_model_mapping = {
         "bert-base-uncased":
             {
@@ -281,9 +359,7 @@ if __name__ == "__main__":
     for key, configurations in path_model_mapping.items():
         train_multitask_model(corpora, configurations)
 
-    """
-        for name, method, model in itertools.product(["TREC"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
-        eval_sequential_model(get_corpora(name), name, method, model)
+
     for key, configurations in path_model_mapping.items():
         if key == "bert-base-uncased" and name == "AMAZON":
             pass
