@@ -245,13 +245,12 @@ def train_multitask_model(corpora, configurations):
         {"corpus": corpora["YELP"], "task_name": "yelp"},
         {"corpus": corpora["DBPEDIA"], "task_name": "dbpedia"},
         {"corpus": corpora["AGNEWS"], "task_name": "agnews"},
-        {"corpus": corpora["TREC"], "task_name": "trec"}
     )
 
     tars = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings=configurations["model"])
 
     trainer = ModelTrainer(tars, tars_corpus)
-    trainer.train(base_path=f"{configurations['path']}/multitask_model",
+    trainer.train(base_path=f"{configurations['path']}/multitask_model_without_trec",
                   learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=10,
@@ -259,9 +258,6 @@ def train_multitask_model(corpora, configurations):
 
 if __name__ == "__main__":
     flair.device = "cuda:1"
-    for name, method, model in itertools.product(["TREC", "AGNEWS", "DBPEDIA", "AMAZON", "YELP"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
-        eval_sequential_model(get_corpora(name), name, method, model)
-    """
     path_model_mapping = {
         "bert-base-uncased":
             {
@@ -280,10 +276,15 @@ if __name__ == "__main__":
             }
     }
     corpora = {}
-    for name in ["AMAZON", "YELP", "DBPEDIA", "AGNEWS", "TREC"]:
+    for name in ["AMAZON", "YELP", "DBPEDIA", "AGNEWS"]:
         corpora[name] = get_corpora(name)
     for key, configurations in path_model_mapping.items():
         train_multitask_model(corpora, configurations)
+
+    """
+
+    for name, method, model in itertools.product(["TREC", "AGNEWS", "DBPEDIA", "AMAZON", "YELP"], ["sequential_model", "multitask_model"], ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
+        eval_sequential_model(get_corpora(name), name, method, model)
     """
     """
     for key, configurations in path_model_mapping.items():
