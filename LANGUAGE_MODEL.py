@@ -11,9 +11,10 @@ def main():
     def tokenize(batch):
         return tokenizer(batch['text'], padding=True, truncation=True)
 
-    train_dataset, test_dataset = load_dataset('imdb', split=['train', 'test'])
+    train_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/train.csv'], column_names=['label', 'header', 'text'], script_version="master")
+    test_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/test.csv'], column_names = ['label', 'header', 'text'], script_version = "master")
     train_dataset = train_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
-    test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
+    test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(test_dataset))
     train_dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'label'])
     test_dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'label'])
 
@@ -30,14 +31,13 @@ def main():
         }
 
     training_args = TrainingArguments(
-        output_dir='./results',
-        num_train_epochs=1,
+        output_dir='transformers_results',
+        num_train_epochs=3,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=64,
         warmup_steps=500,
         weight_decay=0.01,
-        evaluate_during_training=True,
-        logging_dir='./logs',
+        logging_dir='transformers_logs',
     )
 
     trainer = Trainer(
