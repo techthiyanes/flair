@@ -15,8 +15,6 @@ def main():
     test_dataset = load_dataset('csv', data_files=['../.flair/datasets/ag_news_csv/test.csv'], column_names = ['label', 'header', 'text'], script_version = "master", cache_dir="./")
     train_dataset = train_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
     test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(test_dataset))
-    train_dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'label'])
-    test_dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'label'])
 
     def compute_metrics(pred):
         labels = pred.label_ids
