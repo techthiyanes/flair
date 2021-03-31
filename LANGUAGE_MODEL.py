@@ -11,8 +11,8 @@ def main():
     def tokenize(batch):
         return tokenizer(batch['text'], padding=True, truncation=True)
 
-    train_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/train.csv'], column_names=['label', 'header', 'text'], script_version="master")
-    test_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/test.csv'], column_names = ['label', 'header', 'text'], script_version = "master")
+    train_dataset = load_dataset('csv', data_files=['../.flair/datasets/ag_news_csv/train.csv'], column_names=['label', 'header', 'text'], script_version="master")
+    test_dataset = load_dataset('csv', data_files=['../.flair/datasets/ag_news_csv/test.csv'], column_names = ['label', 'header', 'text'], script_version = "master")
     train_dataset = train_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
     test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(test_dataset))
     train_dataset.set_format('torch', columns=['input_ids', 'attention_mask', 'label'])
