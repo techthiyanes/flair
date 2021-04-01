@@ -53,7 +53,7 @@ def train(model_checkpoint, samples, run):
     else:
         mod = "unknown"
 
-    with open(f"0_bert_baseline/agnews/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/agnews/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint)
         f.write(f"Number of seen examples: {samples}")
         for metric, score in preds.metrics.items():
