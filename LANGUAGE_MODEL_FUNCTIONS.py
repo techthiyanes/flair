@@ -11,8 +11,12 @@ def get_model(model_checkpoint, num_labels):
 
 def get_model_with_new_classifier(model_checkpoint, num_labels):
     old_model = BertForSequenceClassification.from_pretrained(model_checkpoint)
+    copied_model = copy.deepcopy(old_model.bert)
+    del old_model
+    copied_model.classifier = torch.nn.Linear(768, num_labels)
+    torch.nn.init.xavier_uniform_(copied_model.classifier.weight)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-    return old_model, tokenizer
+    return copied_model, tokenizer
 
 def read_csv(file, samples = None):
     texts = []
