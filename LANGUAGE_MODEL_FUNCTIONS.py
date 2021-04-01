@@ -13,7 +13,8 @@ def get_model_with_new_classifier(model_checkpoint, num_labels):
     old_model = BertForSequenceClassification.from_pretrained(model_checkpoint)
     copied_model = copy.deepcopy(old_model.bert)
     del old_model
-    copied_model.classifier = torch.nn.Linear(768, num_labels)
+    decoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels)
+    copied_model.classifier = copy.deepcopy(decoder.classifier)
     torch.nn.init.xavier_uniform_(copied_model.classifier.weight)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return copied_model, tokenizer
