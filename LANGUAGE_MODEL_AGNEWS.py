@@ -62,7 +62,7 @@ def train(model_checkpoint, samples, run):
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['bert-base-uncased', 'entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
+    model_checkpoints = ['entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     for model_checkpoint, number_of_samples, run in itertools.product(model_checkpoints, number_data_points, runs):
