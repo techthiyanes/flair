@@ -3,8 +3,8 @@ import torch
 import random
 from transformers import BertForSequenceClassification, BertTokenizer
 
-def get_model(model_checkpoint):
-    model = BertForSequenceClassification.from_pretrained(model_checkpoint)
+def get_model(model_checkpoint, num_labels):
+    model = BertForSequenceClassification.from_pretrained(model_checkpoint, num_labels=num_labels)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return model, tokenizer
 
@@ -16,7 +16,7 @@ def read_csv(file, samples = None):
         filereader = csv.reader(f, delimiter=',')
         for id, row in enumerate(filereader):
             texts.append(row[2])
-            label = int(row[0]) - 1
+            label = int(row[0])
             labels.append(label)
             if samples:
                 if label in class_to_datapoint_mapping:
