@@ -11,8 +11,8 @@ def main():
     def tokenize(batch):
         return tokenizer(batch['text'], padding=True, truncation=True)
 
-    train_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/train.csv'], column_names=['label', 'header', 'text'], script_version="master", cache_dir="./")
-    test_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/test.csv'], column_names = ['label', 'header', 'text'], script_version = "master", cache_dir="./")
+    train_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/train.csv'], column_names=['label', 'header', 'text'])
+    test_dataset = load_dataset('csv', data_files=['../../.flair/datasets/ag_news_csv/test.csv'], column_names = ['label', 'header', 'text'])
     train_dataset = train_dataset.map(tokenize, batched=True, batch_size=len(train_dataset))
     test_dataset = test_dataset.map(tokenize, batched=True, batch_size=len(test_dataset))
 
@@ -42,8 +42,8 @@ def main():
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
-        train_dataset=train_dataset,
-        eval_dataset=test_dataset
+        train_dataset=train_dataset["train"],
+        eval_dataset=test_dataset["train"]
     )
 
     trainer.train()

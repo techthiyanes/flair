@@ -108,7 +108,7 @@ def train_few_shot_model(path):
 
 
 def init_tars(path):
-    model_path = f"{path}/pretrained_model/best-model.pt"
+    model_path = f"{path}/pretrained_model/best-model_epoch19.pt"
     tars = TARSClassifier.load(model_path)
     return tars
 
