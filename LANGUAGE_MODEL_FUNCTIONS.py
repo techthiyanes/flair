@@ -10,9 +10,10 @@ def get_model(model_checkpoint, num_labels):
     return model, tokenizer
 
 def get_model_with_new_classifier(model_checkpoint, num_labels):
-    model = BertForSequenceClassification.from_pretrained(model_checkpoint)
-    bert_encoder = copy.deepcopy(model.bert)
-    new_model = NewModel(bert_encoder, num_classes=num_labels)
+    encoder = BertForSequenceClassification.from_pretrained(model_checkpoint)
+    decoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=num_labels)
+    encoder = copy.deepcopy(encoder.bert)
+    new_model = NewModel(encoder, decoder, num_classes=num_labels)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return new_model, tokenizer
 
@@ -63,12 +64,12 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.labels)
 
 class NewModel(torch.nn.Module):
-    def __init__(self, bert_encoder, num_classes):
+    def __init__(self, encoder, decoder):
         super(NewModel, self).__init__()
-        self.bert = bert_encoder
-        self.classifier = torch.nn.Linear(768, num_classes)
+        self.encoder = encoder
+        self.decoder = decoder
 
     def forward(self, x):
-        hidden = self.bert(x)
-        y_pred = self.classifier(hidden)
+        hidden = self.encoder(x)
+        y_pred = self.decoder(hidden)
         return y_pred
