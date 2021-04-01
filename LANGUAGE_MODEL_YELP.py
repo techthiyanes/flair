@@ -20,8 +20,8 @@ def main():
                 labels.append(int(row[0]) - 1)
         return texts, labels
 
-    train_texts, train_labels = read_csv('../.flair/datasets/ag_news_csv/train.csv')
-    test_texts, test_labels = read_csv('../.flair/datasets/ag_news_csv/test.csv')
+    train_texts, train_labels = read_csv('../.flair/datasets/yelp_review_full_csv/train.csv')
+    test_texts, test_labels = read_csv('../.flair/datasets/yelp_review_full_csv/test.csv')
 
     train_texts, val_texts, train_labels, val_labels = train_test_split(train_texts, train_labels, test_size=.2)
 
