@@ -39,7 +39,7 @@ def train(model_checkpoint, samples, run):
 
     trainer.train()
 
-    test_texts, test_labels = read_csv('../../.flair/datasets/ag_news_csv/test.csv')
+    test_texts, test_labels = read_csv('../.flair/datasets/ag_news_csv/test.csv')
     test_encodings = tokenizer(test_texts, padding=True)
     test_dataset = Dataset(test_encodings, test_labels)
 
