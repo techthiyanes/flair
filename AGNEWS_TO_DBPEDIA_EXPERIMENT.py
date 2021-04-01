@@ -101,8 +101,8 @@ def train_few_shot_model(path):
 
                 trainer.train(base_path=outpath,  # path to store the model artifacts
                               learning_rate=0.02,  # use very small learning rate
-                              mini_batch_size=8,
-                              mini_batch_chunk_size=2,
+                              mini_batch_size=16,
+                              mini_batch_chunk_size=4,
                               max_epochs=20,
                               embeddings_storage_mode='none')
 
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     task = "agnews_to_dbpedia"
     for model_description, configuration in path_model_mapping.items():
         experiment_path = f"experiments_v2/{configuration['path']}/{task}"
-        train_base_model(agnews, f"{experiment_path}/pretrained_model",
-                         document_embeddings=f"{configuration['model']}")
-        #train_few_shot_model(experiment_path)
+        #train_base_model(agnews, f"{experiment_path}/pretrained_model",
+        #                 document_embeddings=f"{configuration['model']}")
+        train_few_shot_model(experiment_path)
 
