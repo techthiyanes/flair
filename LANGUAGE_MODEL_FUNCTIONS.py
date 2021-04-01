@@ -10,7 +10,7 @@ def get_model(model_checkpoint, num_labels):
     return model, tokenizer
 
 def get_model_with_new_classifier(model_checkpoint, num_labels):
-    model = BertForSequenceClassification.from_pretrained(model_checkpoint, num_labels=num_labels)
+    model = BertForSequenceClassification.from_pretrained(model_checkpoint)
     bert_encoder = copy.deepcopy(model.bert)
     new_model = NewModel(bert_encoder, num_classes=num_labels)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
