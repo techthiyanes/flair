@@ -11,6 +11,10 @@ def train(model_checkpoint, samples, run):
     train_encodings = tokenizer(train_texts, truncation=True, padding=True)
     train_dataset = Dataset(train_encodings, train_labels)
 
+    test_texts, test_labels = read_csv('../.flair/datasets/ag_news_csv/test.csv')
+    test_encodings = tokenizer(test_texts, padding=True)
+    test_dataset = Dataset(test_encodings, test_labels)
+
     def compute_metrics(pred):
         labels = pred.label_ids
         preds = pred.predictions.argmax(-1)
@@ -34,16 +38,14 @@ def train(model_checkpoint, samples, run):
         model=model,
         args=training_args,
         compute_metrics=compute_metrics,
-        train_dataset=train_dataset
+        train_dataset=train_dataset,
+        eval_dataset=test_dataset
     )
 
     trainer.train()
 
-    test_texts, test_labels = read_csv('../.flair/datasets/ag_news_csv/test.csv')
-    test_encodings = tokenizer(test_texts, padding=True)
-    test_dataset = Dataset(test_encodings, test_labels)
+    scores = trainer.evaluate()
 
-    preds = trainer.predict(test_dataset)
     if model_checkpoint == 'bert-base-uncased':
         mod = "bert"
     elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
@@ -54,9 +56,9 @@ def train(model_checkpoint, samples, run):
         mod = "unknown"
 
     with open(f"experiments_v2/0_bert_baseline/agnews/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
-        f.write(model_checkpoint)
-        f.write(f"Number of seen examples: {samples}")
-        for metric, score in preds.metrics.items():
+        f.write(model_checkpoint + "\n")
+        f.write(f"Number of seen examples: {samples} \n")
+        for metric, score in scores.items():
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
