@@ -1,12 +1,20 @@
 import csv
+import copy
 import torch
 import random
 from transformers import BertForSequenceClassification, BertTokenizer
 
 def get_model(model_checkpoint, num_labels):
-    model = BertForSequenceClassification.from_pretrained(model_checkpoint)
+    model = BertForSequenceClassification.from_pretrained(model_checkpoint, num_labels=num_labels)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return model, tokenizer
+
+def get_model_with_new_classifier(model_checkpoint, num_labels):
+    model = BertForSequenceClassification.from_pretrained(model_checkpoint, num_labels=num_labels)
+    bert_encoder = copy.deepcopy(model.bert)
+    new_model = NewModel(bert_encoder, num_classes=num_labels)
+    tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
+    return new_model, tokenizer
 
 def read_csv(file, samples = None):
     texts = []
@@ -16,7 +24,7 @@ def read_csv(file, samples = None):
         filereader = csv.reader(f, delimiter=',')
         for id, row in enumerate(filereader):
             texts.append(row[2])
-            label = int(row[0])
+            label = int(row[0]) - 1
             labels.append(label)
             if samples:
                 if label in class_to_datapoint_mapping:
@@ -53,3 +61,14 @@ class Dataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.labels)
+
+class NewModel(torch.nn.Module):
+    def __init__(self, bert_encoder, num_classes):
+        super(NewModel, self).__init__()
+        self.bert = bert_encoder
+        self.classifier = torch.nn.Linear(768, num_classes)
+
+    def forward(self, x):
+        hidden = self.bert(x)
+        y_pred = self.classifier(hidden)
+        return y_pred
