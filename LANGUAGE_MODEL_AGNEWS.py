@@ -29,7 +29,7 @@ def train(model_checkpoint, samples, run):
 
     training_args = TrainingArguments(
         output_dir='transformers_results',
-        num_train_epochs=10,
+        num_train_epochs=20,
         logging_dir='transformers_logs',
         learning_rate=3e-5
     )
