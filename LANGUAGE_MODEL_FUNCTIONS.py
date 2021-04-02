@@ -63,7 +63,7 @@ class Dataset(torch.utils.data.Dataset):
         return item
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.label)
 
 class NewModel(torch.nn.Module):
     def __init__(self, encoder, dropout, decoder):
