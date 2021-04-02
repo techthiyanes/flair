@@ -18,26 +18,22 @@ def get_model_with_new_classifier(model_checkpoint, num_labels):
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return new_model, tokenizer
 
-def read_csv(file, samples = None):
+def read_csv(file):
     texts = []
     labels = []
-    if samples: class_to_datapoint_mapping = dict()
+    class_to_datapoint_mapping = dict()
     with open(file) as f:
         filereader = csv.reader(f, delimiter=',')
         for id, row in enumerate(filereader):
             texts.append(row[2])
             label = int(row[0]) - 1
             labels.append(label)
-            if samples:
-                if label in class_to_datapoint_mapping:
-                    class_to_datapoint_mapping[label].append(id)
-                else:
-                    class_to_datapoint_mapping[label] = [id]
+            if label in class_to_datapoint_mapping:
+                class_to_datapoint_mapping[label].append(id)
+            else:
+                class_to_datapoint_mapping[label] = [id]
 
-    if samples:
-        texts, labels = sample_datasets(texts, labels, samples, class_to_datapoint_mapping)
-
-    return texts, labels
+    return texts, labels, class_to_datapoint_mapping
 
 def read_trec(num_labels=50):
     if num_labels == 50:
