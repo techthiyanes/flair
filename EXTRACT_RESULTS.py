@@ -11,7 +11,7 @@ def main():
                     for line in f:
                         if line.__contains__("accuracy"):
                             l = line.split()
-                            results.append(float(l[1]))
+                            results.append(float(l[1]) * 100)
             results_array = np.array(results)
             print(f"Model: {model} --- Seen Examples: {seen_examples}")
             print(f"Check: {len(results_array)}")
