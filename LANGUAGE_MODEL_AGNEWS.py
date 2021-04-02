@@ -15,6 +15,8 @@ def train(model_checkpoint, samples, run):
     test_encodings = tokenizer(test_texts, padding=True)
     test_dataset = Dataset(test_encodings, test_labels)
 
+    print(train_dataset[0])
+
     def compute_metrics(pred):
         labels = pred.label_ids
         preds = pred.predictions.argmax(-1)
