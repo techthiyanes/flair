@@ -12,24 +12,11 @@ def get_model(model_checkpoint, num_labels):
 
 def get_model_with_new_classifier(model_checkpoint, num_labels):
     encoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
+    new_model = copy.deepcopy(encoder)
     decoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=4)
-    encoder.classifier = decoder.classifier
+    new_model.classifier = decoder.classifier
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", use_fast=True)
     return encoder, tokenizer
-
-def deleteEncodingLayers(model, num_layers_to_keep):
-    oldModuleList = model.bert.encoder.layer
-    newModuleList = nn.ModuleList()
-
-    # Now iterate over all layers, only keepign only the relevant layers.
-    for i in range(0, len(num_layers_to_keep)):
-        newModuleList.append(oldModuleList[i])
-
-    # create a copy of the model, modify it with the new list, and return
-    copyOfModel = copy.deepcopy(model)
-    copyOfModel.bert.encoder.layer = newModuleList
-
-    return copyOfModel
 
 def read_csv(file, samples = None):
     texts = []
@@ -67,25 +54,12 @@ def sample_datasets(original_texts, original_labels, number_of_samples, class_to
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, encodings, labels):
         self.encodings = encodings
-        self.label = labels
+        self.labels = labels
 
     def __getitem__(self, idx):
         item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['label'] = torch.tensor(self.label[idx])
+        item['labels'] = torch.tensor(self.labels[idx])
         return item
 
     def __len__(self):
-        return len(self.label)
-
-class NewModel(torch.nn.Module):
-    def __init__(self, encoder, dropout, decoder):
-        super(NewModel, self).__init__()
-        self.encoder = encoder
-        self.dropout = dropout
-        self.decoder = decoder
-
-    def forward(self, x):
-        h1 = self.encoder(x)
-        h2 = self.dropout(h1)
-        y = self.decoder(h2)
-        return y
+        return len(self.labels)
