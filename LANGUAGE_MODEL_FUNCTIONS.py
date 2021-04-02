@@ -55,11 +55,11 @@ def sample_datasets(original_texts, original_labels, number_of_samples, class_to
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, encodings, labels):
         self.encodings = encodings
-        self.labels = labels
+        self.label = labels
 
     def __getitem__(self, idx):
         item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['labels'] = torch.tensor(self.labels[idx])
+        item['label'] = torch.tensor(self.label[idx])
         return item
 
     def __len__(self):
