@@ -38,9 +38,9 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
         }
 
     training_args = TrainingArguments(
-        output_dir='transformers_results_dbpedia',
+        output_dir='transformers_results_trec',
         num_train_epochs=20,
-        logging_dir='transformers_logs_dbpedia',
+        logging_dir='transformers_logs_trec',
         learning_rate=3e-5
     )
 
@@ -56,7 +56,7 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
 
     scores = trainer.evaluate()
 
-    with open(f"experiments_v2/0_bert_baseline/dbpedia/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/trec/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")
         f.write(f"Number of seen examples: {samples} \n")
         for metric, score in scores.items():
