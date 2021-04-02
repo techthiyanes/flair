@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 def train(model_checkpoint, samples, run):
     num_labels = 4
-    model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
+    model, tokenizer = get_model(model_checkpoint, num_labels)
 
     train_texts, train_labels = read_csv('../.flair/datasets/ag_news_csv/train.csv', samples=samples)
     train_encodings = tokenizer(train_texts, truncation=True, padding=True)

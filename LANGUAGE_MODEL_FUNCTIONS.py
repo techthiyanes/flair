@@ -5,7 +5,7 @@ import random
 from transformers import BertForSequenceClassification, BertTokenizer
 
 def get_model(model_checkpoint, num_labels):
-    model = BertForSequenceClassification.from_pretrained(model_checkpoint, num_labels=num_labels)
+    model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=4)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return model, tokenizer
 
