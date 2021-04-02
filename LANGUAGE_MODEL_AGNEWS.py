@@ -5,7 +5,19 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 def train(model_checkpoint, samples, run):
     num_labels = 4
-    model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
+    if model_checkpoint == 'bert-base-uncased':
+        mod = "bert"
+    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
+        mod = "mnli_base"
+    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model':
+        mod = "mnli_adv"
+    else:
+        mod = "unknown"
+
+    if mod == "bert":
+        model, tokenizer = get_model(model_checkpoint, num_labels)
+    else:
+        model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
 
     train_texts, train_labels = read_csv('../.flair/datasets/ag_news_csv/train.csv', samples=samples)
     train_encodings = tokenizer(train_texts, truncation=True, padding=True)
@@ -45,15 +57,6 @@ def train(model_checkpoint, samples, run):
     trainer.train()
 
     scores = trainer.evaluate()
-
-    if model_checkpoint == 'bert-base-uncased':
-        mod = "bert"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
-        mod = "mnli_base"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model':
-        mod = "mnli_adv"
-    else:
-        mod = "unknown"
 
     with open(f"experiments_v2/0_bert_baseline/agnews/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")

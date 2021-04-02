@@ -1,20 +1,19 @@
 import csv
 import copy
 import torch
-from torch import nn
 import random
 from transformers import BertForSequenceClassification, BertTokenizer
 
 def get_model(model_checkpoint, num_labels):
-    model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=4)
+    model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=num_labels)
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return model, tokenizer
 
 def get_model_with_new_classifier(model_checkpoint, num_labels):
-    encoder = BertForSequenceClassification.from_pretrained(model_checkpoint)
+    pretrained_bert = BertForSequenceClassification.from_pretrained(model_checkpoint)
     new_model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=num_labels)
-    copied_encoder = copy.deepcopy(encoder)
-    new_model.bert = copied_encoder.bert
+    pretrained_bert_copy = copy.deepcopy(pretrained_bert)
+    new_model.bert = pretrained_bert_copy.bert
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return new_model, tokenizer
 
