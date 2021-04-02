@@ -1,10 +1,10 @@
 import itertools
 from transformers import Trainer, TrainingArguments
-from LANGUAGE_MODEL_FUNCTIONS import get_model, read_trec, Dataset, get_model_with_new_classifier
+from LANGUAGE_MODEL_FUNCTIONS import get_model, read_trec, Dataset, get_model_with_new_classifier, sample_datasets
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
-def train(model_checkpoint, samples, run):
-    num_labels = 50
+def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts, test_labels):
+
     if model_checkpoint == 'bert-base-uncased':
         mod = "bert"
     elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
@@ -19,11 +19,10 @@ def train(model_checkpoint, samples, run):
     else:
         model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
 
-    train_texts, test_texts, train_labels, test_labels = read_trec(num_labels=num_labels)
-    train_encodings = tokenizer(train_texts, truncation=True, padding=True)
+    train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
     train_dataset = Dataset(train_encodings, train_labels)
 
-    test_encodings = tokenizer(test_texts, padding=True)
+    test_encodings = tokenizer(test_texts, truncation=True, padding=True, max_length=512)
     test_dataset = Dataset(test_encodings, test_labels)
 
     def compute_metrics(pred):
@@ -39,9 +38,9 @@ def train(model_checkpoint, samples, run):
         }
 
     training_args = TrainingArguments(
-        output_dir='transformers_results_trec',
+        output_dir='transformers_results_dbpedia',
         num_train_epochs=20,
-        logging_dir='transformers_logs_trec',
+        logging_dir='transformers_logs_dbpedia',
         learning_rate=3e-5
     )
 
@@ -57,7 +56,7 @@ def train(model_checkpoint, samples, run):
 
     scores = trainer.evaluate()
 
-    with open(f"experiments_v2/0_bert_baseline/trec/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/dbpedia/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")
         f.write(f"Number of seen examples: {samples} \n")
         for metric, score in scores.items():
@@ -67,5 +66,8 @@ if __name__ == "__main__":
     model_checkpoints = ['bert-base-uncased','entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
+    num_labels = 50
+    train_texts, test_texts, train_labels, test_labels, class_to_datapoint_mapping = read_trec(num_labels=num_labels)
     for model_checkpoint, number_of_samples, run in itertools.product(model_checkpoints, number_data_points, runs):
-        train(model_checkpoint, number_of_samples, run)
+        sampled_train_texts, sampled_train_labels = sample_datasets(original_texts=train_texts, original_labels=train_labels, number_of_samples=number_of_samples, class_to_datapoint_mapping=class_to_datapoint_mapping)
+        train(model_checkpoint, run, number_of_samples, sampled_train_texts, sampled_train_labels, test_texts, test_labels)

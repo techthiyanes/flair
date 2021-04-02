@@ -50,9 +50,18 @@ def read_trec(num_labels=50):
 
     label_dict = corpus.make_label_dictionary()
     train_labels = [label_dict.item2idx[corpus.train[i].labels[0].value.encode("utf-8")] for i, _ in enumerate(corpus.train)]
+    dev_labels = [label_dict.item2idx[corpus.dev[i].labels[0].value.encode("utf-8")] for i, _ in enumerate(corpus.dev)]
+    train_labels = train_labels + dev_labels
     test_labels = [label_dict.item2idx[corpus.test[i].labels[0].value.encode("utf-8")] for i, _ in enumerate(corpus.test)]
 
-    return train_texts, test_texts, train_labels, test_labels
+    class_to_datapoint_mapping = dict()
+    for id, label in enumerate(train_labels):
+        if label in class_to_datapoint_mapping:
+            class_to_datapoint_mapping[label].append(id)
+        else:
+            class_to_datapoint_mapping[label] = [id]
+
+    return train_texts, test_texts, train_labels, test_labels, class_to_datapoint_mapping
 
 def sample_datasets(original_texts, original_labels, number_of_samples, class_to_datapoint_mapping):
     sampled_texts = []
