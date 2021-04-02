@@ -12,11 +12,11 @@ def get_model(model_checkpoint, num_labels):
 
 def get_model_with_new_classifier(model_checkpoint, num_labels):
     encoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
-    new_model = copy.deepcopy(encoder)
     decoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=4)
-    new_model.classifier = decoder.classifier
+    new_model = copy.deepcopy(decoder)
+    new_model.bert = encoder.bert
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", use_fast=True)
-    return encoder, tokenizer
+    return new_model, tokenizer
 
 def read_csv(file, samples = None):
     texts = []

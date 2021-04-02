@@ -7,15 +7,13 @@ def train(model_checkpoint, samples, run):
     num_labels = 4
     model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
 
-    train_texts, train_labels = read_csv('../.flair/datasets/ag_news_csv/train.csv', samples=samples)
+    train_texts, train_labels = read_csv('../../.flair/datasets/ag_news_csv/train.csv', samples=samples)
     train_encodings = tokenizer(train_texts, truncation=True, padding=True)
     train_dataset = Dataset(train_encodings, train_labels)
 
-    test_texts, test_labels = read_csv('../.flair/datasets/ag_news_csv/test.csv')
+    test_texts, test_labels = read_csv('../../.flair/datasets/ag_news_csv/test.csv')
     test_encodings = tokenizer(test_texts, padding=True)
     test_dataset = Dataset(test_encodings, test_labels)
-
-    print(train_dataset[0])
 
     def compute_metrics(pred):
         labels = pred.label_ids
