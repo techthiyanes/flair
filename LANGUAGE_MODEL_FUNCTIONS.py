@@ -2,6 +2,7 @@ import csv
 import copy
 import torch
 import random
+from flair.datasets import TREC_6, TREC_50
 from transformers import BertForSequenceClassification, BertTokenizer
 
 def get_model(model_checkpoint, num_labels):
@@ -37,6 +38,25 @@ def read_csv(file, samples = None):
         texts, labels = sample_datasets(texts, labels, samples, class_to_datapoint_mapping)
 
     return texts, labels
+
+def read_trec(num_labels=50):
+    if num_labels == 50:
+        corpus = TREC_50()
+    elif num_labels == 6:
+        corpus = TREC_6
+    else:
+        raise Exception()
+
+    train_texts = [corpus.train[i].to_plain_string() for i, _ in enumerate(corpus.train)]
+    dev_texts = [corpus.dev[i].to_plain_string() for i, _ in enumerate(corpus.dev)]
+    train_texts = train_texts + dev_texts
+    test_texts = [corpus.test[i].to_plain_string() for i, _ in enumerate(corpus.test)]
+
+    label_dict = corpus.make_label_dictionary()
+    train_labels = [label_dict.item2idx[corpus.train[i].labels[0].value.encode("utf-8")] for i, _ in enumerate(corpus.train)]
+    test_labels = [label_dict.item2idx[corpus.test[i].labels[0].value.encode("utf-8")] for i, _ in enumerate(corpus.test)]
+
+    return train_texts, test_texts, train_labels, test_labels
 
 def sample_datasets(original_texts, original_labels, number_of_samples, class_to_datapoint_mapping):
     sampled_texts = []
