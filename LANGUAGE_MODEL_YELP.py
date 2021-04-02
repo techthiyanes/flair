@@ -1,9 +1,9 @@
 import itertools
 from transformers import Trainer, TrainingArguments
-from LANGUAGE_MODEL_FUNCTIONS import get_model, read_csv, Dataset, get_model_with_new_classifier
+from LANGUAGE_MODEL_FUNCTIONS import get_model, read_csv, Dataset, get_model_with_new_classifier, sample_datasets
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
-def train(model_checkpoint, samples, run):
+def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts, test_labels):
     num_labels = 5
     if model_checkpoint == 'bert-base-uncased':
         mod = "bert"
@@ -19,12 +19,10 @@ def train(model_checkpoint, samples, run):
     else:
         model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
 
-    train_texts, train_labels = read_csv('../.flair/datasets/yelp_review_full_csv/train.csv', samples=samples)
-    train_encodings = tokenizer(train_texts, truncation=True, padding=True)
+    train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
     train_dataset = Dataset(train_encodings, train_labels)
 
-    test_texts, test_labels = read_csv('../.flair/datasets/yelp_review_full_csv/test.csv')
-    test_encodings = tokenizer(test_texts, padding=True)
+    test_encodings = tokenizer(test_texts, truncation=True, padding=True, max_length=512)
     test_dataset = Dataset(test_encodings, test_labels)
 
     def compute_metrics(pred):
@@ -68,5 +66,9 @@ if __name__ == "__main__":
     model_checkpoints = ['bert-base-uncased','entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
+    train_texts, train_labels, class_to_datapoint_mapping = read_csv('../.flair/datasets/yelp_review_full_csv/train.csv')
+    test_texts, test_labels, test_class_to_datapoint_mapping = read_csv('../.flair/datasets/yelp_review_full_csv/test.csv')
+    sampled_test_texts, sampled_test_labels = sample_datasets(original_texts=test_texts, original_labels=test_labels, number_of_samples=4000, class_to_datapoint_mapping=test_class_to_datapoint_mapping)
     for model_checkpoint, number_of_samples, run in itertools.product(model_checkpoints, number_data_points, runs):
-        train(model_checkpoint, number_of_samples, run)
+        sampled_train_texts, sampled_train_labels = sample_datasets(original_texts=train_texts, original_labels=train_labels, number_of_samples=number_of_samples, class_to_datapoint_mapping=class_to_datapoint_mapping)
+        train(model_checkpoint, run, number_of_samples, sampled_train_texts, sampled_train_labels, sampled_test_texts, sampled_test_labels)

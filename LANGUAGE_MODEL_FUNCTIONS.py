@@ -25,14 +25,17 @@ def read_csv(file):
     with open(file) as f:
         filereader = csv.reader(f, delimiter=',')
         for id, row in enumerate(filereader):
-            texts.append(row[2])
+            if file.__contains__("yelp"):
+                row_id = 1
+            else:
+                row_id = 2
+            texts.append(row[row_id])
             label = int(row[0]) - 1
             labels.append(label)
             if label in class_to_datapoint_mapping:
                 class_to_datapoint_mapping[label].append(id)
             else:
                 class_to_datapoint_mapping[label] = [id]
-
     return texts, labels, class_to_datapoint_mapping
 
 def read_trec(num_labels=50):
@@ -67,7 +70,10 @@ def sample_datasets(original_texts, original_labels, number_of_samples, class_to
     sampled_texts = []
     sampled_labels = []
     for cls in class_to_datapoint_mapping.keys():
-        ids = random.sample(class_to_datapoint_mapping[cls], number_of_samples)
+        if number_of_samples < len(class_to_datapoint_mapping[cls]):
+            ids = random.sample(class_to_datapoint_mapping[cls], number_of_samples)
+        else:
+            ids = class_to_datapoint_mapping[cls]
         for id in ids:
             sampled_texts.append(original_texts[id])
             sampled_labels.append(original_labels[id])
