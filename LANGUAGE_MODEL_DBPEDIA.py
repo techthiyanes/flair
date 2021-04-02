@@ -67,7 +67,7 @@ if __name__ == "__main__":
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     train_texts, train_labels, class_to_datapoint_mapping = read_csv('../.flair/datasets/dbpedia_csv/train.csv')
-    test_texts, test_labels = read_csv('../.flair/datasets/dbpedia_csv/test.csv')
+    test_texts, test_labels, _ = read_csv('../.flair/datasets/dbpedia_csv/test.csv')
     for model_checkpoint, number_of_samples, run in itertools.product(model_checkpoints, number_data_points, runs):
         sampled_train_texts, sampled_train_labels = sample_datasets(original_texts=train_texts, original_labels=train_labels, number_of_samples=number_of_samples, class_to_datapoint_mapping=class_to_datapoint_mapping)
         train(model_checkpoint, run, number_of_samples, sampled_train_texts, sampled_train_labels, test_texts, test_labels)
