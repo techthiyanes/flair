@@ -20,11 +20,11 @@ def train(model_checkpoint, samples, run):
         model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
 
     train_texts, train_labels = read_csv('../.flair/datasets/dbpedia_csv/train.csv', samples=samples)
-    train_encodings = tokenizer(train_texts, truncation=True, padding=True)
+    train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
     train_dataset = Dataset(train_encodings, train_labels)
 
     test_texts, test_labels = read_csv('../.flair/datasets/dbpedia_csv/test.csv')
-    test_encodings = tokenizer(test_texts, padding=True)
+    test_encodings = tokenizer(test_texts, truncation=True, padding=True, max_length=512)
     test_dataset = Dataset(test_encodings, test_labels)
 
     def compute_metrics(pred):
