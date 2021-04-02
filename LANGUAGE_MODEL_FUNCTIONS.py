@@ -1,6 +1,7 @@
 import csv
 import copy
 import torch
+from torch import nn
 import random
 from transformers import BertForSequenceClassification, BertTokenizer
 
@@ -10,14 +11,25 @@ def get_model(model_checkpoint, num_labels):
     return model, tokenizer
 
 def get_model_with_new_classifier(model_checkpoint, num_labels):
-    old_model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
-    copied_model = copy.deepcopy(old_model.bert)
-    del old_model
+    encoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=2)
     decoder = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=4)
-    copied_model.classifier = copy.deepcopy(decoder.classifier)
-    torch.nn.init.xavier_uniform_(copied_model.classifier.weight)
-    tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-    return copied_model, tokenizer
+    encoder.classifier = decoder.classifier
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", use_fast=True)
+    return encoder, tokenizer
+
+def deleteEncodingLayers(model, num_layers_to_keep):
+    oldModuleList = model.bert.encoder.layer
+    newModuleList = nn.ModuleList()
+
+    # Now iterate over all layers, only keepign only the relevant layers.
+    for i in range(0, len(num_layers_to_keep)):
+        newModuleList.append(oldModuleList[i])
+
+    # create a copy of the model, modify it with the new list, and return
+    copyOfModel = copy.deepcopy(model)
+    copyOfModel.bert.encoder.layer = newModuleList
+
+    return copyOfModel
 
 def read_csv(file, samples = None):
     texts = []
