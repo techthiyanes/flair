@@ -40,6 +40,8 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
     training_args = TrainingArguments(
         output_dir='transformers_results_yelp',
         num_train_epochs=20,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
         logging_dir='transformers_logs_yelp',
         learning_rate=3e-5
     )
