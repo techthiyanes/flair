@@ -3,7 +3,7 @@ from LANGUAGE_MODEL_FUNCTIONS import get_model, read_csv, Dataset, get_model_wit
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 def train(model_checkpoint, train_texts, train_labels, test_texts, test_labels):
-    num_labels = 5
+    num_labels = 4
     if model_checkpoint == 'bert-base-uncased':
         mod = "bert"
     elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
