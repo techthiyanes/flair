@@ -42,7 +42,7 @@ def read_trec(num_labels=50):
     if num_labels == 50:
         corpus = TREC_50()
     elif num_labels == 6:
-        corpus = TREC_6
+        corpus = TREC_6()
     else:
         raise Exception()
 
