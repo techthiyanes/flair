@@ -3,7 +3,7 @@ import copy
 import torch
 import random
 from flair.datasets import TREC_6, TREC_50
-from transformers import BertForSequenceClassification, BertTokenizer
+from transformers import BertForSequenceClassification, BertTokenizer, AutoModelForSequenceClassification, AutoTokenizer
 
 def get_model(model_checkpoint, num_labels):
     model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=num_labels)
@@ -16,6 +16,14 @@ def get_model_with_new_classifier(model_checkpoint, num_labels):
     pretrained_bert_copy = copy.deepcopy(pretrained_bert)
     new_model.bert = pretrained_bert_copy.bert
     tokenizer = BertTokenizer.from_pretrained(model_checkpoint, use_fast=True)
+    return new_model, tokenizer
+
+def get_bart_model_with_new_classifier(model_checkpoint, num_labels):
+    pretrained_bert = AutoModelForSequenceClassification.from_pretrained(model_checkpoint)
+    new_model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=num_labels)
+    pretrained_bert_copy = copy.deepcopy(pretrained_bert)
+    new_model.bert = pretrained_bert_copy.bert
+    tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return new_model, tokenizer
 
 def read_csv(file):

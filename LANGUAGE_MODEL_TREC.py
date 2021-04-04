@@ -1,6 +1,6 @@
 import itertools
 from transformers import Trainer, TrainingArguments
-from LANGUAGE_MODEL_FUNCTIONS import get_model, read_trec, Dataset, get_model_with_new_classifier, sample_datasets
+from LANGUAGE_MODEL_FUNCTIONS import get_model, read_trec, Dataset, get_model_with_new_classifier, sample_datasets, get_bart_model_with_new_classifier
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts, test_labels):
@@ -16,8 +16,10 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
     else:
         mod = "unknown"
 
-    if mod == "bert" or mod == "bart":
+    if mod == "bert":
         model, tokenizer = get_model(model_checkpoint, num_labels)
+    elif mod == "bart":
+        model, tokenizer = get_bart_model_with_new_classifier(model_checkpoint, num_labels)
     else:
         model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
 
