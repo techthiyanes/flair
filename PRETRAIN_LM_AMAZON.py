@@ -61,10 +61,10 @@ def train(model_checkpoint, train_texts, train_labels, test_texts, test_labels):
 if __name__ == "__main__":
     model_checkpoints = ['bert-base-uncased','entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     train_texts, train_labels, class_to_datapoint_mapping = read_csv('../.flair/datasets/amazon_review_full_csv/train.csv')
-    train_texts, train_labels = sample_datasets(original_texts=train_texts, original_labels=train_labels, number_of_samples=6000, class_to_datapoint_mapping=class_to_datapoint_mapping)
+    train_texts, train_labels = sample_datasets(original_texts=train_texts, original_labels=train_labels, number_of_samples=2500, class_to_datapoint_mapping=class_to_datapoint_mapping)
     test_texts, test_labels, test_class_to_datapoint_mapping = read_csv('../.flair/datasets/amazon_review_full_csv/test.csv')
     test_texts, test_labels = sample_datasets(original_texts=test_texts, original_labels=test_labels,
-                                                number_of_samples=2000,
+                                                number_of_samples=1000,
                                                 class_to_datapoint_mapping=test_class_to_datapoint_mapping)
     for model_checkpoint in model_checkpoints:
         train(model_checkpoint, train_texts, train_labels, test_texts, test_labels)
