@@ -67,7 +67,7 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['facebook/bart-large-mnli','experiments_v2/0_bert_baseline/trec/finetuned/bert/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_base/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_adv/best_model']
+    model_checkpoints = ['experiments_v2/0_bert_baseline/trec/finetuned/bert/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_base/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_adv/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     num_labels = 50
