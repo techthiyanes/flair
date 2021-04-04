@@ -5,16 +5,18 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts, test_labels):
 
-    if model_checkpoint == 'bert-base-uncased':
+    if model_checkpoint == 'experiments_v2/0_bert_baseline/trec/finetuned/bert/best_model':
         mod = "bert"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
+    elif model_checkpoint == 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_base/best_model':
         mod = "mnli_base"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model':
+    elif model_checkpoint == 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_adv/best_model':
         mod = "mnli_adv"
+    elif model_checkpoint == 'facebook/bart-large-mnli':
+        mod = "bart"
     else:
         mod = "unknown"
 
-    if mod == "bert":
+    if mod == "bert" or mod == "bart":
         model, tokenizer = get_model(model_checkpoint, num_labels)
     else:
         model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
@@ -56,14 +58,14 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
 
     scores = trainer.evaluate()
 
-    with open(f"experiments_v2/0_bert_baseline/trec/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/trec/finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")
         f.write(f"Number of seen examples: {samples} \n")
         for metric, score in scores.items():
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['bert-base-uncased','entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
+    model_checkpoints = ['facebook/bart-large-mnli','experiments_v2/0_bert_baseline/trec/finetuned/bert/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_base/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_adv/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     num_labels = 50
