@@ -335,20 +335,28 @@ def train_multitask_model(corpora, configurations):
         {"corpus": corpora["AGNEWS"], "task_name": "agnews"},
     )
 
-    tars = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings=configurations["model"])
+    tars = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings="distilbert_entailment_label_sep_text/pretrained_mnli_rte_fever")
 
     trainer = ModelTrainer(tars, tars_corpus)
-    trainer.train(base_path=f"{configurations['path']}/multitask_model_without_trec",
+    trainer.train(base_path="experiments_v2/2_entailment_advanced/multitask_model_without_trec",
                   learning_rate=0.02,
                   mini_batch_size=16,
                   max_epochs=10,
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":
-    flair.device = "cuda:2"
-    for name, method, model in itertools.product(["TREC"], ["sequential_model"],
-                                                 ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
-        eval_sequential_model(get_trec(test=True), name, method, model, zeroshot=True)
+    flair.device = "cuda:1"
+    corpora = {}
+    corpora["AMAZON"] = get_amazon()
+    corpora["YELP"] = get_yelp()
+    corpora["AGNEWS"] = get_agnews()
+    corpora["DBPEDIA"] = get_dbpedia()
+    train_multitask_model(corpora, "")
+
+    #flair.device = "cuda:2"
+    #for name, method, model in itertools.product(["TREC"], ["sequential_model"],
+    #                                             ["2_bert_baseline", "2_entailment_standard", "2_entailment_advanced"]):
+    #    eval_sequential_model(get_trec(test=True), name, method, model, zeroshot=True)
 
 
     """
