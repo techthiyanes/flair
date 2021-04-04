@@ -19,12 +19,10 @@ def get_model_with_new_classifier(model_checkpoint, num_labels):
     return new_model, tokenizer
 
 def get_bart_model_with_new_classifier(model_checkpoint, num_labels):
-    pretrained_bert = AutoModelForSequenceClassification.from_pretrained(model_checkpoint)
-    new_model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=num_labels)
-    pretrained_bert_copy = copy.deepcopy(pretrained_bert)
-    new_model.bert = pretrained_bert_copy.bert
+    pretrained_bart = AutoModelForSequenceClassification.from_pretrained(model_checkpoint)
+    pretrained_bart.classification_head.out_proj = torch.nn.Linear(in_features=1024, out_features=num_labels, bias=True)
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-    return new_model, tokenizer
+    return pretrained_bart, tokenizer
 
 def read_csv(file):
     texts = []
