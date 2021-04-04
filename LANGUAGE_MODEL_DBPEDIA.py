@@ -56,14 +56,14 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
 
     scores = trainer.evaluate()
 
-    with open(f"experiments_v2/0_bert_baseline/dbpedia/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/dbpedia/finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")
         f.write(f"Number of seen examples: {samples} \n")
         for metric, score in scores.items():
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['bert-base-uncased','entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
+    model_checkpoints = ['experiments_v2/0_bert_baseline/dbpedia/finetuned/bert/best_model', 'experiments_v2/0_bert_baseline/dbpedia/finetuned/mnli_base/best_model', 'experiments_v2/0_bert_baseline/dbpedia/finetuned/mnli_adv/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     train_texts, train_labels, class_to_datapoint_mapping = read_csv('../.flair/datasets/dbpedia_csv/train.csv')
