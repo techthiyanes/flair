@@ -335,7 +335,7 @@ def train_multitask_model(corpora, configurations):
         {"corpus": corpora["AGNEWS"], "task_name": "agnews"},
     )
 
-    tars = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings="distilbert_entailment_label_sep_text/pretrained_mnli_rte_fever")
+    tars = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings="distilbert_entailment_label_sep_text/pretrained_mnli_rte_fever/best_model")
 
     trainer = ModelTrainer(tars, tars_corpus)
     trainer.train(base_path="experiments_v2/2_entailment_advanced/multitask_model_without_trec",
