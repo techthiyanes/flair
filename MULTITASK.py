@@ -141,7 +141,7 @@ def get_dbpedia(train: bool = False, test: bool = False):
         skip_header=False,
         delimiter=',',
         label_name_map=dbpedia_label_name_map
-    ).downsample(0.25)
+    ).downsample(0.15)
     train_split = SentenceDataset([s for s in dbpedia_full.train])
     dev_split = SentenceDataset([s for s in dbpedia_full.dev])
     train_split = Corpus(train=train_split, dev=dev_split)
@@ -172,7 +172,7 @@ def get_amazon(train: bool = False, test: bool = False):
         skip_header=False,
         delimiter=',',
         label_name_map=amazon_label_name_map
-    ).downsample(0.05)
+    ).downsample(0.25)
     train_split = SentenceDataset([s for s in amazon_full.train])
     dev_split = SentenceDataset([s for s in amazon_full.dev])
     train_split = Corpus(train=train_split, dev=dev_split)
@@ -203,7 +203,7 @@ def get_yelp(train: bool = False, test: bool = False):
         skip_header=False,
         delimiter=',',
         label_name_map=yelp_label_name_map
-    ).downsample(0.25)
+    ).downsample(0.13)
     train_split = SentenceDataset([s for s in yelp_full.train])
     dev_split = SentenceDataset([s for s in yelp_full.dev])
     train_split = Corpus(train=train_split, dev=dev_split)
@@ -347,10 +347,10 @@ def train_multitask_model(corpora, configurations):
 if __name__ == "__main__":
     flair.device = "cuda:1"
     corpora = {}
-    corpora["AMAZON"] = get_amazon()
-    corpora["YELP"] = get_yelp()
-    corpora["AGNEWS"] = get_agnews()
-    corpora["DBPEDIA"] = get_dbpedia()
+    corpora["AMAZON"] = get_amazon(train=True)
+    corpora["YELP"] = get_yelp(train=True)
+    corpora["AGNEWS"] = get_agnews(train=True)
+    corpora["DBPEDIA"] = get_dbpedia(train=True)
     train_multitask_model(corpora, "")
 
     #flair.device = "cuda:2"
