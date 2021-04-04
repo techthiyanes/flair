@@ -5,11 +5,11 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts, test_labels):
     num_labels = 5
-    if model_checkpoint == 'bert-base-uncased':
+    if model_checkpoint == 'experiments_v2/0_bert_baseline/yelp/finetuned/bert/best_model':
         mod = "bert"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
+    elif model_checkpoint == 'experiments_v2/0_bert_baseline/yelp/finetuned/mnli_base/best_model':
         mod = "mnli_base"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model':
+    elif model_checkpoint == 'experiments_v2/0_bert_baseline/yelp/finetuned/mnli_adv/best_model':
         mod = "mnli_adv"
     else:
         mod = "unknown"
@@ -58,14 +58,14 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
 
     scores = trainer.evaluate()
 
-    with open(f"experiments_v2/0_bert_baseline/yelp/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/yelp/finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")
         f.write(f"Number of seen examples: {samples} \n")
         for metric, score in scores.items():
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['bert-base-uncased','entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
+    model_checkpoints = ['experiments_v2/0_bert_baseline/yelp/finetuned/bert/best_model', 'experiments_v2/0_bert_baseline/yelp/finetuned/mnli_base/best_model', 'experiments_v2/0_bert_baseline/yelp/finetuned/mnli_adv/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     train_texts, train_labels, class_to_datapoint_mapping = read_csv('../.flair/datasets/yelp_review_full_csv/train.csv')
