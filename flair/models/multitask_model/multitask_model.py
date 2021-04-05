@@ -77,7 +77,8 @@ class MultitaskModel(flair.nn.Model):
         embedding_storage_mode: str = "none",
         out_path: Union[str, Path] = None,
         mini_batch_size: int = 32,
-        num_workers: int = 8
+        num_workers: int = 8,
+        **kwargs
     ) -> (Result, float):
         """
         :param sentences: batch of sentences
