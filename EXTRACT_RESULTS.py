@@ -7,7 +7,7 @@ def main():
         for seen_examples in examples:
             results = []
             for run in [1,2,3,4,5]:
-                with open(f'experiments_v2/0_bert_baseline/trec/finetuned/{model}-trained_on_{seen_examples}-run_{run}.log', encoding='utf8') as f:
+                with open(f'experiments_v2/0_bert_baseline/amazon/finetuned/{model}-trained_on_{seen_examples}-run_{run}.log', encoding='utf8') as f:
                     for line in f:
                         if line.__contains__("accuracy"):
                             l = line.split()
