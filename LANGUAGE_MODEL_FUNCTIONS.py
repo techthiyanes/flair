@@ -21,8 +21,9 @@ def get_model_with_new_classifier(model_checkpoint, num_labels):
 def get_bart_model_with_new_classifier(model_checkpoint, num_labels):
     config = AutoConfig.from_pretrained(model_checkpoint, num_labels=num_labels)
     pretrained_bart = AutoModelForSequenceClassification.from_pretrained(model_checkpoint)
-    pretrained_bart.config = config
     pretrained_bart.classification_head.out_proj = torch.nn.Linear(in_features=1024, out_features=num_labels, bias=True)
+    pretrained_bart.config = config
+    pretrained_bart.num_labels = config.num_labels
     torch.nn.init.xavier_uniform_(pretrained_bart.classification_head.out_proj.weight)
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return pretrained_bart, tokenizer
