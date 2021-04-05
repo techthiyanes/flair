@@ -345,8 +345,6 @@ def train_multitask_model(corpora, configurations):
                   embeddings_storage_mode='none')
 
 def eval_multitask():
-    trec = get_trec(test=True)
-    tars_classic = TARSClassifier.load("experiments_v2/2_bert_baseline/sequential_model/after_AGNEWS/best-model.pt")
     label_name_map = {'ENTY:sport': 'question about entity sport',
                       'ENTY:dismed': 'question about entity diseases medicine',
                       'LOC:city': 'question about location city',
@@ -398,12 +396,15 @@ def eval_multitask():
                       'NUM:volsize': 'question about number volume size',
                       'DESC:desc': 'question about description description'
                       }
-    tars_classic.add_and_switch_to_new_task("trec")
+    trec = TREC_50(label_name_map=label_name_map)
+    label_dict = trec.make_label_dictionary()
+    tars_classic = TARSClassifier.load("experiments_v2/2_bert_baseline/sequential_model/after_AGNEWS/best-model.pt")
+    tars_classic.add_and_switch_to_new_task("trec", label_dict)
     tp = 0
     all = 0
     classes = [key for key in label_name_map.values()]
-    tars_classic.predict_zero_shot(trec, classes, multi_label=False)
-    for sentence in trec:
+    tars_classic.predict_zero_shot(trec.test, classes, multi_label=False)
+    for sentence in trec.test:
         true = sentence.get_labels("class")[0]
         pred = sentence.get_labels("label")[0]
         if pred:
