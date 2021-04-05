@@ -101,7 +101,7 @@ class MultitaskModel(flair.nn.Model):
 
             # Evaluate each split on its respective model
             for task, split in batch_split.items():
-                loss = self.__getattr__(task).evaluate(sentences=[sentence_batch[i] for i in split],
+                res, loss = self.__getattr__(task).evaluate(sentences=[sentence_batch[i] for i in split],
                                                        embedding_storage_mode=embedding_storage_mode,
                                                        out_path=out_path)
                 if isinstance(loss, tuple):

@@ -284,7 +284,9 @@ class SequenceTaggerTask(flair.nn.Model):
 
             self.store_result()
 
-        return loss
+            res = []
+
+        return res, loss
 
     def predict(
             self,
