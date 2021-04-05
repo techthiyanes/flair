@@ -62,7 +62,6 @@ class MultitaskModel(flair.nn.Model):
         :return: Key-value pairs as (task_id, list of sentences ids in batch)
         """
         sent_idx_to_model = {}
-        print(sentences)
         for sentence_id, sentence in enumerate(sentences):
             task = random.choice(sentence.multitask_annotations.get("multitask_assignments"))
             if not task.task_id in sent_idx_to_model:

@@ -3,7 +3,8 @@ import xml.etree.ElementTree as ET
 from transformers import AutoTokenizer, AutoConfig, AutoModel
 
 import flair
-from flair.datasets import SentenceDataset, CSVClassificationCorpus
+from LANGUAGE_MODEL_FUNCTIONS import read_csv, sample_datasets
+from flair.datasets import SentenceDataset
 from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.models.tars_tagger_model import TARSTagger
 from flair.data import Corpus, Sentence, TARSCorpus, MultitaskCorpus
@@ -46,24 +47,30 @@ def main():
     laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
     #restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
 
-    laptop_corpus = Corpus(SentenceDataset(laptop_data))
+    laptop_corpus = Corpus(laptop_data)
     #restaurant_corpus = Corpus(SentenceDataset(restaurant_data))
 
     laptop_label_dict = laptop_corpus.make_label_dictionary("polarity")
+
 
     label_name_map = {'1': 'World',
                       '2': 'Sports',
                       '3': 'Business',
                       '4': 'Science Technology'
                       }
-    column_name_map = {0: "label", 2: "text"}
-    corpus_path = f"{flair.cache_root}/datasets/ag_news_csv"
-    agnews: Corpus = CSVClassificationCorpus(corpus_path,
-                                                   column_name_map,
-                                                   skip_header=False,
-                                                   delimiter=',',
-                                                   label_name_map=label_name_map
-                                                   ).downsample(0.01)
+    train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/ag_news_csv/train.csv")
+    train_texts, train_labels = sample_datasets(original_texts=train_texts,
+                                                original_labels=train_labels,
+                                                number_of_samples=100,
+                                                class_to_datapoint_mapping=class_to_datapoint_mapping)
+    train_labels = [x+1 for x in train_labels]
+    sentences = []
+    for text, label in zip(train_texts, train_labels):
+        sentence = Sentence(text)
+        sentence.add_label("class", label_name_map[str(label)])
+        sentences.append(sentence)
+
+    agnews = Corpus(sentences)
 
     model_checkpoints = ['bert-base-uncased', 'entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     for model_checkpoint in model_checkpoints:
@@ -95,7 +102,7 @@ def main():
         trainer.train(base_path="testy",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
                       mini_batch_size=16,
-                      max_epochs=20,
+                      max_epochs=3,
                       embeddings_storage_mode='none')
 
 
