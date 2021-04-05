@@ -43,7 +43,7 @@ class MultitaskModel(flair.nn.Model):
         :return: loss
         """
         batch_split = self.split_batch_to_task_ids(sentences)
-        loss = torch.Tensor()
+        loss = 0
         for model, split in batch_split.items():
             curr_loss = self.__getattr__(model).forward_loss(sentences=[sentences[i] for i in split])
             if isinstance(curr_loss, tuple):
