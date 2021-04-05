@@ -816,12 +816,16 @@ class TransformerWordEmbeddings(TokenEmbeddings):
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
         # load tokenizer and transformer model
-        self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model, **kwargs)
-        if not 'config' in kwargs:
-            config = AutoConfig.from_pretrained(model, output_hidden_states=True, **kwargs)
-            self.model = AutoModel.from_pretrained(model, config=config, **kwargs)
+        if not kwargs["shared_embedding"]:
+            self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model, **kwargs)
+            if not 'config' in kwargs:
+                config = AutoConfig.from_pretrained(model, output_hidden_states=True, **kwargs)
+                self.model = AutoModel.from_pretrained(model, config=config, **kwargs)
+            else:
+                self.model = AutoModel.from_pretrained(None, **kwargs)
         else:
-            self.model = AutoModel.from_pretrained(None, **kwargs)
+            self.tokenizer = kwargs["shared_embedding"]["tokenizer"]
+            self.model = kwargs["shared_embedding"]["model"]
 
         self.allow_long_sentences = allow_long_sentences
 
