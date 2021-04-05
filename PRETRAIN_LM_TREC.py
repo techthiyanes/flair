@@ -1,6 +1,8 @@
 from transformers import Trainer, TrainingArguments
 from LANGUAGE_MODEL_FUNCTIONS import get_model, read_trec, Dataset, get_model_with_new_classifier, get_bart_model_with_new_classifier
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+import torch
+import torch.nn.functional
 
 def train(model_checkpoint, train_texts, train_labels, test_texts, test_labels):
     num_labels = 6
@@ -28,7 +30,7 @@ def train(model_checkpoint, train_texts, train_labels, test_texts, test_labels):
 
     def compute_metrics(pred):
         labels = pred.label_ids
-        preds = pred.predictions.argmax(-1)
+        preds = torch.nn.functional.softmax(torch.Tensor(pred.predictions[0]), dim=1).argmax(-1)
         precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='micro')
         acc = accuracy_score(labels, preds)
         return {
@@ -39,9 +41,9 @@ def train(model_checkpoint, train_texts, train_labels, test_texts, test_labels):
         }
 
     training_args = TrainingArguments(
-        output_dir='transformers_results_yelplm',
+        output_dir='transformers_results_bart',
         num_train_epochs=20,
-        logging_dir='transformers_logs_yelplm',
+        logging_dir='transformers_logs_bart',
         learning_rate=3e-5
     )
 
@@ -57,8 +59,8 @@ def train(model_checkpoint, train_texts, train_labels, test_texts, test_labels):
 
     trainer.evaluate()
 
-    trainer.save_model(f"experiments_v2/0_bert_baseline/trec/finetuned/{mod}/best_model")
-    tokenizer.save_pretrained(f"experiments_v2/0_bert_baseline/trec/finetuned/{mod}/best_model")
+    trainer.save_model(f"experiments_v2/0_bert_baseline/trec/finetuned/bart/best_model")
+    tokenizer.save_pretrained(f"experiments_v2/0_bert_baseline/trec/finetuned/bart/best_model")
 
 if __name__ == "__main__":
     model_checkpoints = ['facebook/bart-large-mnli']
