@@ -678,6 +678,10 @@ class TARSClassifier(TextClassifier):
         :param multi_label_threshold: If multi-label you can set the threshold to make predictions
         :param beta: Parameter for F-beta score for evaluation and training annealing
         """
+
+        # ----- Multitask logging info -----
+        self.name = f"{self._get_name()} - Task: {label_type}"
+
         from flair.embeddings.document import TransformerDocumentEmbeddings
 
         if not isinstance(document_embeddings, TransformerDocumentEmbeddings):

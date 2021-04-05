@@ -139,6 +139,9 @@ class TARSTagger(flair.nn.Model, Switchable):
         :param beta: Parameter for F-beta score for evaluation and training annealing
         """
 
+        # ----- Multitask logging info -----
+        self.name = f"{self._get_name()} - Task: {tag_type}"
+
         flair.nn.Model.__init__(self)
         Switchable.__init__(self)
 
