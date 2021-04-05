@@ -82,8 +82,8 @@ def main():
         tars_classifier = TARSClassifier(task_name='YELP', label_dictionary=yelp_label_dict, document_embeddings=document_embeddings)
 
         multitask_corpus = MultitaskCorpus(
-            {"corpus": laptop_corpus, "task": "sequence_tagger"},
-            {"corpus": yelp_corpus, "task": "text_classifier"}
+            {"corpus": laptop_corpus, "task": tars_tagger},
+            {"corpus": yelp_corpus, "task": tars_classifier}
         )
 
         multitask_model = MultitaskModel(multitask_corpus.models)
