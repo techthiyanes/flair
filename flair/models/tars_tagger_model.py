@@ -536,7 +536,16 @@ class TARSTagger(flair.nn.Model, Switchable):
             detailed_results=detailed_result,
         )
 
+        self.result = result
+
         return result, eval_loss / eval_count
+
+    def _reset_eval_metrics(self):
+        """
+        Resets current metric and result, i.e. can be called after
+        each evaluation batch of multitask model.
+        """
+        self.result = None
 
     def predict(
             self,

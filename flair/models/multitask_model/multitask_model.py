@@ -104,8 +104,10 @@ class MultitaskModel(flair.nn.Model):
                 loss = self.__getattr__(task).evaluate(sentences=[sentence_batch[i] for i in split],
                                                        embedding_storage_mode=embedding_storage_mode,
                                                        out_path=out_path)
-
-                eval_loss += loss
+                if isinstance(loss, tuple):
+                    eval_loss += loss[0] / loss[1]
+                else:
+                    eval_loss += loss
 
             batch_no += 1
 
