@@ -2,6 +2,8 @@ import itertools
 from transformers import Trainer, TrainingArguments
 from LANGUAGE_MODEL_FUNCTIONS import get_model, read_trec, Dataset, get_model_with_new_classifier, sample_datasets, get_bart_model_with_new_classifier
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+import torch
+import torch.nn.functional
 
 def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts, test_labels):
 
@@ -31,7 +33,7 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
 
     def compute_metrics(pred):
         labels = pred.label_ids
-        preds = pred.predictions.argmax(-1)
+        preds = torch.nn.functional.softmax(torch.Tensor(pred.predictions[0]), dim=1).argmax(-1)
         precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average='micro')
         acc = accuracy_score(labels, preds)
         return {
