@@ -90,7 +90,7 @@ def main():
 
         multitask_model = MultitaskModel(multitask_corpus.models)
 
-        trainer = ModelTrainer(tars_tagger, laptop_corpus)
+        trainer = ModelTrainer(multitask_model, multitask_corpus)
 
         trainer.train(base_path="testy",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
