@@ -64,9 +64,8 @@ def main():
                                                    delimiter=',',
                                                    label_name_map=label_name_map
                                                    ).downsample(0.01)
-    agnews_labels = agnews.make_label_dictionary()
 
-    model_checkpoints = ['bert-base-uncased','entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
+    model_checkpoints = ['bert-base-uncased', 'entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     for model_checkpoint in model_checkpoints:
         tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
         config = AutoConfig.from_pretrained(model_checkpoint, output_hidden_states=True)
@@ -91,7 +90,7 @@ def main():
 
         multitask_model = MultitaskModel(multitask_corpus.models)
 
-        trainer = ModelTrainer(multitask_model, multitask_corpus)
+        trainer = ModelTrainer(tars_tagger, laptop_corpus)
 
         trainer.train(base_path="testy",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
