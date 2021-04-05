@@ -385,16 +385,16 @@ class TARSTagger(flair.nn.Model, Switchable):
         return model
 
     def forward_loss(
-            self, data_points: Union[List[Sentence], Sentence]
+            self, sentences: Union[List[Sentence], Sentence]
     ) -> torch.tensor:
 
-        if type(data_points) == Sentence:
-            data_points = [data_points]
+        if type(sentences) == Sentence:
+            sentences = [sentences]
 
         # Transform input data into TARS format
-        sentences = self._get_tars_formatted_sentences(data_points)
+        tars_sentences = self._get_tars_formatted_sentences(sentences)
 
-        loss = self.tars_model.forward_loss(sentences)
+        loss = self.tars_model.forward_loss(tars_sentences)
 
         return loss
 

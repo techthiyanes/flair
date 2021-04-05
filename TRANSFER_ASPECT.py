@@ -4,11 +4,11 @@ from transformers import AutoTokenizer, AutoConfig, AutoModel
 
 import flair
 from flair.datasets import SentenceDataset, CSVClassificationCorpus
+from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.models.tars_tagger_model import TARSTagger
 from flair.data import Corpus, Sentence, TARSCorpus, MultitaskCorpus
 from flair.models.multitask_model import MultitaskModel
 from flair.embeddings import TransformerWordEmbeddings, TransformerDocumentEmbeddings
-from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 
 
@@ -78,8 +78,12 @@ def main():
         word_embeddings = TransformerWordEmbeddings(shared_embedding = shared_embedding)
         document_embeddings = TransformerDocumentEmbeddings(shared_embedding = shared_embedding)
 
+        tars_corpus = TARSCorpus(
+            {"corpus": laptop_corpus, "task_name": "laptop"},
+        )
+
         tars_tagger = TARSTagger("laptop", laptop_label_dict, "polarity", embeddings=word_embeddings)
-        tars_classifier = TARSClassifier(task_name='YELP', label_dictionary=yelp_label_dict, document_embeddings=document_embeddings)
+        tars_classifier = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings=document_embeddings)
 
         multitask_corpus = MultitaskCorpus(
             {"corpus": laptop_corpus, "model": tars_tagger},

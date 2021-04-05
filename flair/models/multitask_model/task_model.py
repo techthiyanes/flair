@@ -1079,11 +1079,11 @@ class RefactoredTARSClassifier(flair.nn.Model):
         return already_sampled_negative_labels
 
     def forward_loss(
-            self, data_points: Union[List[Sentence], Sentence]
+            self, sentences: Union[List[Sentence], Sentence]
     ) -> torch.tensor:
-        sentences = self._get_tars_formatted_sentences(data_points)
-        scores = self.forward(sentences)
-        return self._calculate_loss(scores, sentences)
+        tars_sentences = self._get_tars_formatted_sentences(sentences)
+        scores = self.forward(tars_sentences)
+        return self._calculate_loss(scores, tars_sentences)
 
     def forward(self, sentences):
         self.document_embeddings.embed(sentences)
