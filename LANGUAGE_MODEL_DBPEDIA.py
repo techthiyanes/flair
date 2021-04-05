@@ -63,9 +63,9 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['experiments_v2/0_bert_baseline/dbpedia/finetuned/bert/best_model', 'experiments_v2/0_bert_baseline/dbpedia/finetuned/mnli_base/best_model', 'experiments_v2/0_bert_baseline/dbpedia/finetuned/mnli_adv/best_model']
-    number_data_points = [1,2,4,8,10,100]
-    runs = [1,2,3,4,5]
+    model_checkpoints = ['experiments_v2/0_bert_baseline/dbpedia/finetuned/mnli_adv/best_model']
+    number_data_points = [100]
+    runs = [3,4,5]
     train_texts, train_labels, class_to_datapoint_mapping = read_csv('../.flair/datasets/dbpedia_csv/train.csv')
     test_texts, test_labels, test_class_to_datapoint_mapping = read_csv('../.flair/datasets/dbpedia_csv/test.csv')
     sampled_test_texts, sampled_test_labels = sample_datasets(original_texts=test_texts, original_labels=test_labels, number_of_samples=1500, class_to_datapoint_mapping=test_class_to_datapoint_mapping)
