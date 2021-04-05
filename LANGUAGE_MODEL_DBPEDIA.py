@@ -5,11 +5,11 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts, test_labels):
     num_labels = 14
-    if model_checkpoint == 'bert-base-uncased':
+    if model_checkpoint == 'experiments_v2/0_bert_baseline/dbpedia/finetuned/bert/best_model':
         mod = "bert"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
+    elif model_checkpoint == 'experiments_v2/0_bert_baseline/dbpedia/finetuned/mnli_base/best_model':
         mod = "mnli_base"
-    elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model':
+    elif model_checkpoint == 'experiments_v2/0_bert_baseline/dbpedia/finetuned/mnli_adv/best_model':
         mod = "mnli_adv"
     else:
         mod = "unknown"
