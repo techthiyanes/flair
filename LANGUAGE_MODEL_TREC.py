@@ -23,10 +23,10 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
     else:
         model, tokenizer = get_model_with_new_classifier(model_checkpoint, num_labels)
 
-    train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512)
+    train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=512, return_tensors="pt")
     train_dataset = Dataset(train_encodings, train_labels)
 
-    test_encodings = tokenizer(test_texts, truncation=True, padding=True, max_length=512)
+    test_encodings = tokenizer(test_texts, truncation=True, padding=True, max_length=512, return_tensors="pt")
     test_dataset = Dataset(test_encodings, test_labels)
 
     def compute_metrics(pred):
@@ -60,14 +60,14 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
 
     scores = trainer.evaluate()
 
-    with open(f"experiments_v2/0_bert_baseline/trec/finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/trec/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")
         f.write(f"Number of seen examples: {samples} \n")
         for metric, score in scores.items():
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['experiments_v2/0_bert_baseline/trec/finetuned/bert/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_base/best_model', 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_adv/best_model']
+    model_checkpoints = ['facebook/bart-large-mnli']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     num_labels = 50

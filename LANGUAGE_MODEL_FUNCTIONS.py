@@ -3,7 +3,7 @@ import copy
 import torch
 import random
 from flair.datasets import TREC_6, TREC_50
-from transformers import BertForSequenceClassification, BertTokenizer, AutoModelForSequenceClassification, AutoTokenizer
+from transformers import BertForSequenceClassification, BertTokenizer, AutoModelForSequenceClassification, AutoTokenizer, AutoConfig
 
 def get_model(model_checkpoint, num_labels):
     model = BertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=num_labels)
@@ -19,8 +19,11 @@ def get_model_with_new_classifier(model_checkpoint, num_labels):
     return new_model, tokenizer
 
 def get_bart_model_with_new_classifier(model_checkpoint, num_labels):
+    config = AutoConfig.from_pretrained(model_checkpoint, num_labels=num_labels)
     pretrained_bart = AutoModelForSequenceClassification.from_pretrained(model_checkpoint)
+    pretrained_bart.config = config
     pretrained_bart.classification_head.out_proj = torch.nn.Linear(in_features=1024, out_features=num_labels, bias=True)
+    torch.nn.init.xavier_uniform_(pretrained_bart.classification_head.out_proj.weight)
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
     return pretrained_bart, tokenizer
 
