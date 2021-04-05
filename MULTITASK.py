@@ -398,7 +398,7 @@ def eval_multitask():
                       'NUM:volsize': 'question about number volume size',
                       'DESC:desc': 'question about description description'
                       }
-    tars_classic.add_and_switch_to_task("trec")
+    tars_classic.add_and_switch_to_new_task("trec")
     tp = 0
     all = 0
     classes = [key for key in label_name_map.values()]
