@@ -1,13 +1,13 @@
 import numpy as np
 
 def main():
-    models = ["bert", "mnli_base", "mnli_adv"]
+    models = ["bart"]
     examples = [1,2,4,8,10,100]
     for model in models:
         for seen_examples in examples:
             results = []
             for run in [1,2,3,4,5]:
-                with open(f'experiments_v2/0_bert_baseline/yelp/finetuned/{model}-trained_on_{seen_examples}-run_{run}.log', encoding='utf8') as f:
+                with open(f'experiments_v2/0_bert_baseline/trec/not_finetuned/{model}-trained_on_{seen_examples}-run_{run}.log', encoding='utf8') as f:
                     for line in f:
                         if line.__contains__("accuracy"):
                             l = line.split()
