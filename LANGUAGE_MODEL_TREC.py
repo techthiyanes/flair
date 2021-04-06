@@ -13,10 +13,8 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
         mod = "mnli_base"
     elif model_checkpoint == 'experiments_v2/0_bert_baseline/trec/finetuned/mnli_adv/best_model':
         mod = "mnli_adv"
-    elif model_checkpoint == 'facebook/bart-large-mnli':
-        mod = "bart"
     else:
-        mod = "unknown"
+        mod = "bart"
 
     if mod == "bert":
         model, tokenizer = get_model(model_checkpoint, num_labels)
@@ -62,14 +60,14 @@ def train(model_checkpoint, run, samples, train_texts, train_labels, test_texts,
 
     scores = trainer.evaluate()
 
-    with open(f"experiments_v2/0_bert_baseline/trec/not_finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
+    with open(f"experiments_v2/0_bert_baseline/trec/finetuned/{mod}-trained_on_{samples}-run_{run}.log", 'w') as f:
         f.write(model_checkpoint + "\n")
         f.write(f"Number of seen examples: {samples} \n")
         for metric, score in scores.items():
             f.write(f"{metric}: {score} \n")
 
 if __name__ == "__main__":
-    model_checkpoints = ['facebook/bart-large-mnli']
+    model_checkpoints = ['experiments_v2/0_bert_baseline/trec/finetuned/bart/best_model']
     number_data_points = [1,2,4,8,10,100]
     runs = [1,2,3,4,5]
     num_labels = 50
