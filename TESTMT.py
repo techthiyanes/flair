@@ -77,7 +77,7 @@ def main():
     trainer.train(base_path="testy2",  # path to store the model artifacts
                   learning_rate=0.02,  # use very small learning rate
                   mini_batch_size=16,
-                  mini_batch_chunk_size=4,
+                  mini_batch_chunk_size=8,
                   max_epochs=20,
                   embeddings_storage_mode='none')
 
