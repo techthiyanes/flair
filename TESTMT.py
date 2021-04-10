@@ -15,4 +15,6 @@ def main():
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":
+    import flair
+    flair.device = "cuda:0"
     main()
