@@ -3,7 +3,9 @@ from flair.datasets import CONLL_03
 from flair.trainers import ModelTrainer
 
 def main():
-    conll = CONLL_03()
+
+    conll = CONLL_03().downsample(0.01)
+
     tagger = TARSTagger("conll_ner", conll.make_tag_dictionary("ner"), tag_type="ner")
 
     trainer = ModelTrainer(tagger, conll)
