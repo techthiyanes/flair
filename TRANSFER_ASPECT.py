@@ -11,7 +11,7 @@ from flair.data import Corpus, Sentence, TARSCorpus, MultitaskCorpus
 from flair.models.multitask_model import MultitaskModel
 from flair.embeddings import TransformerWordEmbeddings, TransformerDocumentEmbeddings
 from flair.trainers import ModelTrainer
-
+import random
 
 def extract_XML(path):
     data = []
@@ -28,7 +28,7 @@ def extract_XML(path):
                 _from = int(aspectTerm.get('from'))
                 _to = int(aspectTerm.get('to'))
                 term = aspectTerm.get("term")
-                polarity = aspectTerm.get("polarity")
+                polarity = f"{aspectTerm.get('polarity')} aspect"
                 _curr_from = 0
                 _curr_to = 0
                 for token in flair_sentence:
@@ -45,6 +45,7 @@ def extract_XML(path):
 
 def main():
     laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
+    laptop_data = random.sample(laptop_data, 64)
     #restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
 
     laptop_corpus = Corpus(laptop_data)
@@ -61,7 +62,7 @@ def main():
     train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/ag_news_csv/train.csv")
     train_texts, train_labels = sample_datasets(original_texts=train_texts,
                                                 original_labels=train_labels,
-                                                number_of_samples=100,
+                                                number_of_samples=16,
                                                 class_to_datapoint_mapping=class_to_datapoint_mapping)
     train_labels = [x+1 for x in train_labels]
     sentences = []
