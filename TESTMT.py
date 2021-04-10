@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 
 from LANGUAGE_MODEL_FUNCTIONS import read_csv, sample_datasets
 from flair.data import Sentence, Corpus, TARSCorpus
+from flair.datasets import TREC_6
 from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.models.tars_tagger_model import TARSTagger
 from flair.models.text_classification_model import TARSClassifier
@@ -43,7 +44,7 @@ def main():
 
     laptop_corpus = Corpus(laptop_data)
     tagger = TARSTagger("conll_ner", laptop_corpus.make_tag_dictionary("polarity"), tag_type="polarity")
-    """
+
     label_name_map = {'1':'very negative restaurant sentiment',
                       '2':'negative restaurant sentiment',
                       '3':'neutral restaurant sentiment',
@@ -73,6 +74,32 @@ def main():
                   mini_batch_size=16,
                   max_epochs=20,
                   embeddings_storage_mode='none')
+    """
+    # 1. define label names in natural language since some datasets come with cryptic set of labels
+    label_name_map = {'ENTY': 'question about entity',
+                      'DESC': 'question about description',
+                      'ABBR': 'question about abbreviation',
+                      'HUM': 'question about person',
+                      'NUM': 'question about number',
+                      'LOC': 'question about location'
+                      }
+
+    # 2. get the corpus
+    corpus: Corpus = TREC_6(label_name_map=label_name_map)
+
+    # 3. create a TARS classifier
+    tars = TARSClassifier(task_name='TREC_6', label_dictionary=corpus.make_label_dictionary())
+
+    # 4. initialize the text classifier trainer
+    trainer = ModelTrainer(tars, corpus)
+
+    # 5. start the training
+    trainer.train(base_path='resources/taggers/trec',  # path to store the model artifacts
+                  learning_rate=0.02,  # use very small learning rate
+                  mini_batch_size=16,
+                  mini_batch_chunk_size=4,  # optionally set this if transformer is too much for your machine
+                  max_epochs=10,  # terminate after 10 epochs
+                  )
 
 if __name__ == "__main__":
     import flair
