@@ -53,16 +53,16 @@ def main():
 
     laptop_label_dict = laptop_corpus.make_label_dictionary("polarity")
 
-
-    label_name_map = {'1': 'World',
-                      '2': 'Sports',
-                      '3': 'Business',
-                      '4': 'Science Technology'
+    label_name_map = {'1':'very negative restaurant sentiment',
+                      '2':'negative restaurant sentiment',
+                      '3':'neutral restaurant sentiment',
+                      '4':'positive restaurant sentiment',
+                      '5':'very positive restaurant sentiment'
                       }
-    train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/ag_news_csv/train.csv")
+    train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/yelp_review_full_csv/train.csv")
     train_texts, train_labels = sample_datasets(original_texts=train_texts,
                                                 original_labels=train_labels,
-                                                number_of_samples=16,
+                                                number_of_samples=600,
                                                 class_to_datapoint_mapping=class_to_datapoint_mapping)
     train_labels = [x+1 for x in train_labels]
     sentences = []
@@ -71,7 +71,7 @@ def main():
         sentence.add_label("class", label_name_map[str(label)])
         sentences.append(sentence)
 
-    agnews = Corpus(sentences)
+    yelp = Corpus(sentences)
 
     model_checkpoints = ['bert-base-uncased', 'entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     for model_checkpoint in model_checkpoints:
@@ -85,7 +85,7 @@ def main():
         document_embeddings = TransformerDocumentEmbeddings(shared_embedding = shared_embedding)
 
         tars_corpus = TARSCorpus(
-            {"corpus": agnews, "task_name": "news"},
+            {"corpus": yelp, "task_name": "food_review"},
         )
 
         tars_tagger = TARSTagger("laptop", laptop_label_dict, "polarity", embeddings=word_embeddings)
@@ -93,7 +93,7 @@ def main():
 
         multitask_corpus = MultitaskCorpus(
             {"corpus": laptop_corpus, "model": tars_tagger},
-            {"corpus": agnews, "model": tars_classifier}
+            {"corpus": yelp, "model": tars_classifier}
         )
 
         multitask_model = MultitaskModel(multitask_corpus.models)
@@ -103,10 +103,10 @@ def main():
         trainer.train(base_path="testy",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
                       mini_batch_size=16,
-                      max_epochs=3,
+                      max_epochs=20,
                       embeddings_storage_mode='none')
 
 
 if __name__ == "__main__":
-    #flair.device = "cuda:0"
+    flair.device = "cuda:0"
     main()
