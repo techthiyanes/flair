@@ -39,47 +39,74 @@ def extract_XML(path):
     return data
 
 def main():
-    """
-    laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
+    model_checkpoints = ['bert-base-uncased', 'entailment_label_sep_text/pretrained_mnli/best_model',
+                         'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
 
-    laptop_corpus = Corpus(laptop_data)
-    tagger = TARSTagger("conll_ner", laptop_corpus.make_tag_dictionary("polarity"), tag_type="polarity")
-    """
-    label_name_map = {'1':'very negative restaurant sentiment',
-                      '2':'negative restaurant sentiment',
-                      '3':'neutral restaurant sentiment',
-                      '4':'positive restaurant sentiment',
-                      '5':'very positive restaurant sentiment'
-                      }
-    train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/yelp_review_full_csv/train.csv")
-    train_texts, train_labels = sample_datasets(original_texts=train_texts,
-                                                original_labels=train_labels,
-                                                number_of_samples=600,
-                                                class_to_datapoint_mapping=class_to_datapoint_mapping)
-    train_labels = [x+1 for x in train_labels]
-    sentences = []
-    for text, label in zip(train_texts, train_labels):
-        sentence = Sentence(text)
-        sentence.add_label("class", label_name_map[str(label)])
-        sentences.append(sentence)
+    for model in model_checkpoints:
+        laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
 
-    del class_to_datapoint_mapping
-    del label_name_map
-    del train_labels
-    del train_texts
+        laptop_corpus = Corpus(laptop_data)
+        tars_tagger = TARSTagger("laptop_aspect", laptop_corpus.make_tag_dictionary("polarity"), tag_type="polarity", embeddings=model)
 
-    yelp_corpus = Corpus(sentences)
+        trainer = ModelTrainer(tars_tagger, laptop_corpus)
 
-    tars_classifier = TARSClassifier("YELP", yelp_corpus.make_label_dictionary())
+        trainer.train(base_path="experiments_v2/3_results/laptop",  # path to store the model artifacts
+                      learning_rate=0.02,  # use very small learning rate
+                      mini_batch_size=16,
+                      mini_batch_chunk_size=8,
+                      max_epochs=20,
+                      embeddings_storage_mode='none')
 
-    trainer = ModelTrainer(tars_classifier, yelp_corpus)
+        restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
+        restaurant_corpus = Corpus(restaurant_data)
 
-    trainer.train(base_path="testy2",  # path to store the model artifacts
-                  learning_rate=0.02,  # use very small learning rate
-                  mini_batch_size=16,
-                  mini_batch_chunk_size=8,
-                  max_epochs=20,
-                  embeddings_storage_mode='none')
+        tars_tagger = TARSTagger("restaurant_aspect", restaurant_corpus.make_tag_dictionary("polarity"), tag_type="polarity",
+                                 embeddings=model)
+
+        trainer = ModelTrainer(tars_tagger, restaurant_corpus)
+
+        trainer.train(base_path="experiments_v2/3_results/restaurant",  # path to store the model artifacts
+                      learning_rate=0.02,  # use very small learning rate
+                      mini_batch_size=16,
+                      mini_batch_chunk_size=8,
+                      max_epochs=20,
+                      embeddings_storage_mode='none')
+
+        label_name_map = {'1':'very negative restaurant sentiment',
+                          '2':'negative restaurant sentiment',
+                          '3':'neutral restaurant sentiment',
+                          '4':'positive restaurant sentiment',
+                          '5':'very positive restaurant sentiment'
+                          }
+        train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/yelp_review_full_csv/train.csv")
+        train_texts, train_labels = sample_datasets(original_texts=train_texts,
+                                                    original_labels=train_labels,
+                                                    number_of_samples=600,
+                                                    class_to_datapoint_mapping=class_to_datapoint_mapping)
+        train_labels = [x+1 for x in train_labels]
+        sentences = []
+        for text, label in zip(train_texts, train_labels):
+            sentence = Sentence(text)
+            sentence.add_label("class", label_name_map[str(label)])
+            sentences.append(sentence)
+
+        del class_to_datapoint_mapping
+        del label_name_map
+        del train_labels
+        del train_texts
+
+        yelp_corpus = Corpus(sentences)
+
+        tars_classifier = TARSClassifier("YELP", yelp_corpus.make_label_dictionary(), document_embeddings=model)
+
+        trainer = ModelTrainer(tars_classifier, yelp_corpus)
+
+        trainer.train(base_path="experiments_v2/3_results/yelp",  # path to store the model artifacts
+                      learning_rate=0.02,  # use very small learning rate
+                      mini_batch_size=16,
+                      mini_batch_chunk_size=8,
+                      max_epochs=20,
+                      embeddings_storage_mode='none')
 
 if __name__ == "__main__":
     import flair
