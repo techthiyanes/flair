@@ -64,7 +64,7 @@ class TransformerDocumentEmbeddings(DocumentEmbeddings):
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
         # load tokenizer and transformer model
-        if not kwargs["shared_embedding"]:
+        if not "shared_embedding" in kwargs:
             self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model, **kwargs)
             if not 'config' in kwargs:
                 config = AutoConfig.from_pretrained(model, output_hidden_states=True, **kwargs)
