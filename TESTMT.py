@@ -4,7 +4,7 @@ from LANGUAGE_MODEL_FUNCTIONS import read_csv, sample_datasets
 from flair.data import Sentence, Corpus, TARSCorpus
 from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.models.tars_tagger_model import TARSTagger
-from flair.datasets import CONLL_03
+from flair.models.text_classification_model import TARSClassifier
 from flair.trainers import ModelTrainer
 
 def extract_XML(path):
@@ -64,13 +64,9 @@ def main():
 
     yelp_corpus = Corpus(sentences)
 
-    tars_corpus = TARSCorpus(
-        {"corpus": yelp_corpus, "task_name": "food_review"},
-    )
+    tars_classifier = TARSClassifier("YELP", yelp_corpus.make_label_dictionary())
 
-    tars_classifier = RefactoredTARSClassifier(tars_corpus.tasks)
-
-    trainer = ModelTrainer(tars_classifier, tars_corpus)
+    trainer = ModelTrainer(tars_classifier, yelp_corpus)
 
     trainer.train(base_path="testy2",  # path to store the model artifacts
                   learning_rate=0.02,  # use very small learning rate
