@@ -43,6 +43,13 @@ def main():
                          'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
 
     for model in model_checkpoints:
+        if model == 'bert-base-uncased':
+            mod = "bert"
+        elif model == 'entailment_label_sep_text/pretrained_mnli/best_model':
+            mod = "mnli_base"
+        elif model == 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model':
+            mod = "mnli_adv"
+
         laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
 
         laptop_corpus = Corpus(laptop_data)
@@ -50,7 +57,7 @@ def main():
 
         trainer = ModelTrainer(tars_tagger, laptop_corpus)
 
-        trainer.train(base_path="experiments_v2/3_results/laptop",  # path to store the model artifacts
+        trainer.train(base_path=f"experiments_v2/3_results/laptop_aspect/{mod}",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
                       mini_batch_size=16,
                       mini_batch_chunk_size=8,
@@ -65,7 +72,7 @@ def main():
 
         trainer = ModelTrainer(tars_tagger, restaurant_corpus)
 
-        trainer.train(base_path="experiments_v2/3_results/restaurant",  # path to store the model artifacts
+        trainer.train(base_path=f"experiments_v2/3_results/restaurant_aspect/{mod}",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
                       mini_batch_size=16,
                       mini_batch_chunk_size=8,
@@ -101,7 +108,7 @@ def main():
 
         trainer = ModelTrainer(tars_classifier, yelp_corpus)
 
-        trainer.train(base_path="experiments_v2/3_results/yelp",  # path to store the model artifacts
+        trainer.train(base_path=f"experiments_v2/3_results/restaurant_classification/{mod}",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
                       mini_batch_size=16,
                       mini_batch_chunk_size=8,
