@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 
 from LANGUAGE_MODEL_FUNCTIONS import read_csv, sample_datasets
 from flair.data import Sentence, Corpus, TARSCorpus
-from flair.datasets import TREC_6
+from flair.datasets import TREC_6, AMAZON_REVIEWS
 from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.models.tars_tagger_model import TARSTagger
 from flair.models.text_classification_model import TARSClassifier

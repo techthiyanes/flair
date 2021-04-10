@@ -7,6 +7,7 @@ from LANGUAGE_MODEL_FUNCTIONS import read_csv, sample_datasets
 from flair.datasets import SentenceDataset
 from flair.models.multitask_model.task_model import RefactoredTARSClassifier
 from flair.models.tars_tagger_model import TARSTagger
+from flair.models.text_classification_model import TARSClassifier
 from flair.data import Corpus, Sentence, TARSCorpus, MultitaskCorpus
 from flair.models.multitask_model import MultitaskModel
 from flair.embeddings import TransformerWordEmbeddings, TransformerDocumentEmbeddings
@@ -70,10 +71,17 @@ def main():
         sentence.add_label("class", label_name_map[str(label)])
         sentences.append(sentence)
 
-    yelp = Corpus(sentences)
+    yelp_corpus = Corpus(sentences)
 
     model_checkpoints = ['bert-base-uncased', 'entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     for model_checkpoint in model_checkpoints:
+        if model_checkpoint == 'bert-base-uncased':
+            mod = "bert"
+        elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli/best_model':
+            mod = "mnli_base"
+        elif model_checkpoint == 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model':
+            mod = "mnli_adv"
+
         tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
         config = AutoConfig.from_pretrained(model_checkpoint, output_hidden_states=True)
         model = AutoModel.from_pretrained(model_checkpoint, config=config)
@@ -83,25 +91,22 @@ def main():
         word_embeddings = TransformerWordEmbeddings(shared_embedding = shared_embedding)
         document_embeddings = TransformerDocumentEmbeddings(shared_embedding = shared_embedding)
 
-        tars_corpus = TARSCorpus(
-            {"corpus": yelp, "task_name": "food_review"},
-        )
-
         tars_tagger = TARSTagger("laptop", laptop_label_dict, "polarity", embeddings=word_embeddings)
-        tars_classifier = RefactoredTARSClassifier(tars_corpus.tasks, document_embeddings=document_embeddings)
+        tars_classifier = TARSClassifier("YELP", yelp_corpus.make_label_dictionary(), document_embeddings=document_embeddings)
 
         multitask_corpus = MultitaskCorpus(
             {"corpus": laptop_corpus, "model": tars_tagger},
-            {"corpus": yelp, "model": tars_classifier}
+            {"corpus": yelp_corpus, "model": tars_classifier}
         )
 
         multitask_model = MultitaskModel(multitask_corpus.models)
 
         trainer = ModelTrainer(multitask_model, multitask_corpus)
 
-        trainer.train(base_path="testy",  # path to store the model artifacts
+        trainer.train(base_path=f"experiments_v2/3_results/transfer_to_restaurant/{mod}",  # path to store the model artifacts
                       learning_rate=0.02,  # use very small learning rate
                       mini_batch_size=16,
+                      mini_batch_chunk_size=4,
                       max_epochs=20,
                       embeddings_storage_mode='none')
 
