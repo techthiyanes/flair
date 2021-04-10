@@ -1,19 +1,52 @@
+import xml.etree.ElementTree as ET
+
+from flair.data import Sentence, Corpus
 from flair.models.tars_tagger_model import TARSTagger
 from flair.datasets import CONLL_03
 from flair.trainers import ModelTrainer
 
+def extract_XML(path):
+    data = []
+    tree = ET.parse(path)
+    root = tree.getroot()
+    for sentence in root.findall('sentence'):
+        text = sentence.find("text").text
+        flair_sentence = Sentence(text)
+        for token in flair_sentence:
+            token.set_label("polarity", "O")
+        aspectTerms = sentence.find("aspectTerms")
+        if aspectTerms:
+            for aspectTerm in aspectTerms:
+                _from = int(aspectTerm.get('from'))
+                _to = int(aspectTerm.get('to'))
+                term = aspectTerm.get("term")
+                polarity = f"{aspectTerm.get('polarity')} aspect"
+                _curr_from = 0
+                _curr_to = 0
+                for token in flair_sentence:
+                    _curr_to += len(token.text) + 1
+                    if _curr_from - len(term) < _from < _curr_from + len(term):
+                        if _curr_to - len(term) < _to < _curr_to + len(term):
+                            if term.__contains__(token.text):
+                                token.set_label("polarity", polarity)
+                    _curr_from = _curr_to
+
+        data.append(flair_sentence)
+
+    return data
+
 def main():
+    laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
 
-    conll = CONLL_03().downsample(0.01)
+    laptop_corpus = Corpus(laptop_data)
+    tagger = TARSTagger("conll_ner", laptop_corpus.make_tag_dictionary("polarity"), tag_type="polarity")
 
-    tagger = TARSTagger("conll_ner", conll.make_tag_dictionary("ner"), tag_type="ner")
-
-    trainer = ModelTrainer(tagger, conll)
+    trainer = ModelTrainer(tagger, laptop_corpus)
 
     trainer.train(base_path="testy",  # path to store the model artifacts
                   learning_rate=0.02,  # use very small learning rate
                   mini_batch_size=16,
-                  max_epochs=15,
+                  max_epochs=20,
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":

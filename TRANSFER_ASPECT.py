@@ -45,7 +45,6 @@ def extract_XML(path):
 
 def main():
     laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
-    laptop_data = random.sample(laptop_data, 64)
     #restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
 
     laptop_corpus = Corpus(laptop_data)
