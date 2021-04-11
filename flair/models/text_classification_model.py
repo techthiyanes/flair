@@ -377,12 +377,14 @@ class TextClassifier(flair.nn.Model):
                            f"{macro_f_score}\t" \
                            f"{accuracy_score}"
 
-            self.result = Result(
+            result = Result(
                 main_score=micro_f_score,
                 log_line=log_line,
                 log_header=log_header,
                 detailed_results=detailed_result,
             )
+
+            self.result = result
 
             eval_loss /= batch_count
 
