@@ -47,7 +47,6 @@ def extract_XML(path):
 def main():
     laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
     #restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
-
     laptop_corpus = Corpus(laptop_data)
     #restaurant_corpus = Corpus(SentenceDataset(restaurant_data))
 
@@ -104,7 +103,7 @@ def main():
         trainer = ModelTrainer(multitask_model, multitask_corpus)
 
         trainer.train(base_path=f"experiments_v2/3_results/transfer_to_restaurant/{mod}",  # path to store the model artifacts
-                      learning_rate=0.02,  # use very small learning rate
+                      learning_rate=3e-5,  # use very small learning rate
                       mini_batch_size=16,
                       mini_batch_chunk_size=4,
                       max_epochs=20,

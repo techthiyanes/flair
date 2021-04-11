@@ -506,6 +506,9 @@ class ModelTrainer:
                 if average_over != 0:
                     train_loss /= average_over
 
+                if self.model.__class__.__name__ == "MultitaskModel":
+                    train_loss /= seen_batches
+
                 self.model.eval()
 
                 log_line(log)
