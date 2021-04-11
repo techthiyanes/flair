@@ -16,7 +16,7 @@ import flair.embeddings
 from flair.data import Dictionary, Sentence, Label, DataPoint, DataPair
 from flair.datasets import SentenceDataset, DataLoader
 from flair.file_utils import cached_path
-from flair.training_utils import convert_labels_to_one_hot, Result, store_embeddings
+from flair.training_utils import convert_labels_to_one_hot, Result, store_embeddings, Metric
 
 log = logging.getLogger("flair")
 
@@ -52,6 +52,11 @@ class TextClassifier(flair.nn.Model):
         """
 
         super(TextClassifier, self).__init__()
+
+        # ----- Multitask logging info -----
+        self.name = f"{self._get_name()} - Task: {label_type}"
+        # ----- Evaluation metric parameters -----
+        self.metric = Metric("Evaluation", beta=beta)
 
         self.document_embeddings: flair.embeddings.DocumentEmbeddings = document_embeddings
         self.label_dictionary: Dictionary = label_dictionary
@@ -372,7 +377,7 @@ class TextClassifier(flair.nn.Model):
                            f"{macro_f_score}\t" \
                            f"{accuracy_score}"
 
-            result = Result(
+            self.result = Result(
                 main_score=micro_f_score,
                 log_line=log_line,
                 log_header=log_header,
@@ -382,6 +387,14 @@ class TextClassifier(flair.nn.Model):
             eval_loss /= batch_count
 
             return result, eval_loss
+
+    def _reset_eval_metrics(self):
+        """
+        Resets current metric and result, i.e. can be called after
+        each evaluation batch of multitask model.
+        """
+        self.metric = Metric("Evaluation", beta=self.beta)
+        self.result = None
 
     @staticmethod
     def _filter_empty_sentences(sentences: List[Sentence]) -> List[Sentence]:
@@ -681,6 +694,8 @@ class TARSClassifier(TextClassifier):
 
         # ----- Multitask logging info -----
         self.name = f"{self._get_name()} - Task: {label_type}"
+        self.metric = Metric("Evaluation", beta=beta)
+        self.beta = beta
 
         from flair.embeddings.document import TransformerDocumentEmbeddings
 

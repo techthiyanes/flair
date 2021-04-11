@@ -1321,6 +1321,7 @@ class RefactoredTARSClassifier(flair.nn.Model):
             self.result = result
 
             return result, eval_loss
+
     def _reset_eval_metrics(self):
         """
         Resets current metric and result, i.e. can be called after
