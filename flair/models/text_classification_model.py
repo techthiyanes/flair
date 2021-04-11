@@ -926,12 +926,12 @@ class TARSClassifier(TextClassifier):
         return model
 
     def forward_loss(
-            self, data_points: Union[List[Sentence], Sentence]
+            self, sentences: Union[List[Sentence], Sentence]
     ) -> torch.tensor:
         # Transform input data into TARS format
-        sentences = self._get_tars_formatted_sentences(data_points)
+        _sentences = self._get_tars_formatted_sentences(sentences)
 
-        return self.tars_model.forward_loss(sentences)
+        return self.tars_model.forward_loss(_sentences)
 
     def _transform_tars_scores(self, tars_scores):
         # M: num_classes in task, N: num_samples
