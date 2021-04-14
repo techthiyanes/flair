@@ -95,9 +95,9 @@ class MultitaskModel(flair.nn.Model):
         batch_split = self.split_batch_to_task_ids(sentences)
         for task, split in batch_split.items():
 
-            sentences = SentenceDataset([sentences[i] for i in split])
+            sentences_split = SentenceDataset([sentences[i] for i in split])
 
-            res, loss = self.__getattr__(task).evaluate(sentences=sentences,
+            res, loss = self.__getattr__(task).evaluate(sentences=sentences_split,
                                                    embedding_storage_mode=embedding_storage_mode,
                                                    out_path=out_path)
 
