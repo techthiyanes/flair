@@ -111,5 +111,5 @@ def main():
 
 
 if __name__ == "__main__":
-    #flair.device = "cuda:0"
+    flair.device = "cuda:0"
     main()
