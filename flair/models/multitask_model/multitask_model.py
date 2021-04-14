@@ -88,22 +88,24 @@ class MultitaskModel(flair.nn.Model):
         :param num_workers: number of workers for DataLoader class
         :return: Tuple of Result object and loss value (float)
         """
-        if not isinstance(sentences, Dataset):
-            sentences = SentenceDataset(sentences)
-        data_loader = DataLoader(sentences, batch_size=mini_batch_size, num_workers=num_workers)
-
         eval_loss = 0
         batch_no = 0
 
-        for sentence_batch in data_loader:
+        results = []
+        batch_split = self.split_batch_to_task_ids(sentences)
+        for task, split in batch_split.items():
 
-            batch_split = self.split_batch_to_task_ids(sentence_batch)
+            sentences = SentenceDataset([sentences[i] for i in split])
+            data_loader = DataLoader(sentences, batch_size=mini_batch_size, num_workers=num_workers)
 
-            # Evaluate each split on its respective model
-            for task, split in batch_split.items():
-                res, loss = self.__getattr__(task).evaluate(sentences=[sentence_batch[i] for i in split],
+            for sentence_batch in data_loader:
+
+                res, loss = self.__getattr__(task).evaluate(sentences=sentence_batch,
                                                        embedding_storage_mode=embedding_storage_mode,
                                                        out_path=out_path)
+
+                results.append(res)
+
                 if isinstance(loss, tuple):
                     eval_loss += loss[0] / loss[1]
                 else:
@@ -112,13 +114,6 @@ class MultitaskModel(flair.nn.Model):
             batch_no += 1
 
         eval_loss /= batch_no
-
-        results = []
-        for task in self.tasks:
-            results.append(self.__getattr__(task).result)
-            # Since our Task Model's do not keep track when evaluate is over (they just get a batch of sentences)
-            # we need to reset the evaluation metrics after each batch.
-            self.__getattr__(task)._reset_eval_metrics()
 
         result = MultitaskResult(results)
 
