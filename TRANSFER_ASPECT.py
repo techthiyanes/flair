@@ -47,7 +47,7 @@ def extract_XML(path):
 def main():
     laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
     #restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
-    laptop_corpus = Corpus(laptop_data)
+    laptop_corpus = Corpus(laptop_data).downsample(0.05)
     #restaurant_corpus = Corpus(SentenceDataset(restaurant_data))
 
     laptop_label_dict = laptop_corpus.make_label_dictionary("polarity")
@@ -61,7 +61,7 @@ def main():
     train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/yelp_review_full_csv/train.csv")
     train_texts, train_labels = sample_datasets(original_texts=train_texts,
                                                 original_labels=train_labels,
-                                                number_of_samples=600,
+                                                number_of_samples=20,
                                                 class_to_datapoint_mapping=class_to_datapoint_mapping)
     train_labels = [x+1 for x in train_labels]
     sentences = []
@@ -111,5 +111,5 @@ def main():
 
 
 if __name__ == "__main__":
-    flair.device = "cuda:0"
+    #flair.device = "cuda:0"
     main()

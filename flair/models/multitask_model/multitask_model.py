@@ -96,20 +96,17 @@ class MultitaskModel(flair.nn.Model):
         for task, split in batch_split.items():
 
             sentences = SentenceDataset([sentences[i] for i in split])
-            data_loader = DataLoader(sentences, batch_size=mini_batch_size, num_workers=num_workers)
 
-            for sentence_batch in data_loader:
+            res, loss = self.__getattr__(task).evaluate(sentences=sentences,
+                                                   embedding_storage_mode=embedding_storage_mode,
+                                                   out_path=out_path)
 
-                res, loss = self.__getattr__(task).evaluate(sentences=sentence_batch,
-                                                       embedding_storage_mode=embedding_storage_mode,
-                                                       out_path=out_path)
+            results.append(res)
 
-                results.append(res)
-
-                if isinstance(loss, tuple):
-                    eval_loss += loss[0] / loss[1]
-                else:
-                    eval_loss += loss
+            if isinstance(loss, tuple):
+                eval_loss += loss[0] / loss[1]
+            else:
+                eval_loss += loss
 
             batch_no += 1
 
