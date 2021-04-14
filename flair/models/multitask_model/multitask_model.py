@@ -108,10 +108,6 @@ class MultitaskModel(flair.nn.Model):
             else:
                 eval_loss += loss
 
-            batch_no += 1
-
-        eval_loss /= batch_no
-
         result = MultitaskResult(results)
 
         return result, eval_loss
