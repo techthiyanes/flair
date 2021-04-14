@@ -43,15 +43,15 @@ def main():
     laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
 
     laptop_corpus = Corpus(laptop_data)
-    tars_tagger = TARSTagger("laptop_aspect", laptop_corpus.make_tag_dictionary("polarity"), tag_type="polarity", embeddings="bert-base-uncased")
+    tars_tagger = TARSTagger("laptop_aspect", laptop_corpus.make_tag_dictionary("polarity"), tag_type="polarity", embeddings=model)
 
     trainer = ModelTrainer(tars_tagger, laptop_corpus)
 
-    trainer.train(base_path=f"testy_tagger",  # path to store the model artifacts
+    trainer.train(base_path=f"testy",  # path to store the model artifacts
                   learning_rate=0.02,  # use very small learning rate
                   mini_batch_size=16,
                   mini_batch_chunk_size=8,
-                  max_epochs=10,
+                  max_epochs=20,
                   embeddings_storage_mode='none')
 
 if __name__ == "__main__":

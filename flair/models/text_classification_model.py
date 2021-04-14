@@ -384,8 +384,6 @@ class TextClassifier(flair.nn.Model):
                 detailed_results=detailed_result,
             )
 
-            self.result = result
-
             eval_loss /= batch_count
 
             return result, eval_loss
