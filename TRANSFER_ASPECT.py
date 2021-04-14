@@ -45,20 +45,20 @@ def extract_XML(path):
     return data
 
 def main():
-    laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
-    #restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
-    laptop_corpus = Corpus(laptop_data)
+    #laptop_data = extract_XML('aspect_data/Laptop_Train_v2.xml')
+    restaurant_data = extract_XML('aspect_data/Restaurants_Train_v2.xml')
+    restaurant_corpus = Corpus(restaurant_data)
     #restaurant_corpus = Corpus(SentenceDataset(restaurant_data))
 
-    laptop_label_dict = laptop_corpus.make_label_dictionary("polarity")
+    laptop_label_dict = restaurant_corpus.make_label_dictionary("polarity")
 
-    label_name_map = {'1':'very negative restaurant sentiment',
-                      '2':'negative restaurant sentiment',
-                      '3':'neutral restaurant sentiment',
-                      '4':'positive restaurant sentiment',
-                      '5':'very positive restaurant sentiment'
+    label_name_map = {'1': 'very negative product sentiment',
+                      '2': 'negative product sentiment',
+                      '3': 'neutral product sentiment',
+                      '4': 'positive product sentiment',
+                      '5': 'very positive product sentiment'
                       }
-    train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/yelp_review_full_csv/train.csv")
+    train_texts, train_labels, class_to_datapoint_mapping = read_csv(f"{flair.cache_root}/datasets/amazon_review_full_csv/train.csv")
     train_texts, train_labels = sample_datasets(original_texts=train_texts,
                                                 original_labels=train_labels,
                                                 number_of_samples=1000,
@@ -70,7 +70,7 @@ def main():
         sentence.add_label("class", label_name_map[str(label)])
         sentences.append(sentence)
 
-    yelp_corpus = Corpus(sentences)
+    amazon_corpus = Corpus(sentences)
 
     model_checkpoints = ['bert-base-uncased', 'entailment_label_sep_text/pretrained_mnli/best_model', 'entailment_label_sep_text/pretrained_mnli_rte_fever/best_model']
     for model_checkpoint in model_checkpoints:
@@ -91,18 +91,18 @@ def main():
         document_embeddings = TransformerDocumentEmbeddings(shared_embedding = shared_embedding)
 
         tars_tagger = TARSTagger("laptop", laptop_label_dict, "polarity", embeddings=word_embeddings)
-        tars_classifier = TARSClassifier("YELP", yelp_corpus.make_label_dictionary(), document_embeddings=document_embeddings)
+        tars_classifier = TARSClassifier("YELP", amazon_corpus.make_label_dictionary(), document_embeddings=document_embeddings)
 
         multitask_corpus = MultitaskCorpus(
-            {"corpus": laptop_corpus, "model": tars_tagger},
-            {"corpus": yelp_corpus, "model": tars_classifier}
+            {"corpus": restaurant_corpus, "model": tars_tagger},
+            {"corpus": amazon_corpus, "model": tars_classifier}
         )
 
         multitask_model = MultitaskModel(multitask_corpus.models)
 
         trainer = ModelTrainer(multitask_model, multitask_corpus)
 
-        trainer.train(base_path=f"experiments_v2/3_results/transfer_to_restaurant/{mod}",  # path to store the model artifacts
+        trainer.train(base_path=f"experiments_v2/3_results/transfer_to_product/{mod}",  # path to store the model artifacts
                       learning_rate=3e-5,  # use very small learning rate
                       mini_batch_size=16,
                       mini_batch_chunk_size=4,
@@ -111,5 +111,5 @@ def main():
 
 
 if __name__ == "__main__":
-    flair.device = "cuda:0"
+    flair.device = "cuda:1"
     main()
