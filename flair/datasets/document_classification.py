@@ -37,6 +37,7 @@ class ClassificationCorpus(Corpus):
             memory_mode: str = "partial",
             label_name_map: Dict[str, str] = None,
             skip_labels: List[str] = None,
+            allow_examples_without_labels=False,
             encoding: str = 'utf-8',
     ):
         """
@@ -55,6 +56,7 @@ class ClassificationCorpus(Corpus):
         if full corpus and all embeddings fits into memory for speedups during training. Otherwise use 'partial' and if
         even this is too much for your memory, use 'disk'.
         :param label_name_map: Optionally map label names to different schema.
+        :param allow_examples_without_labels: set to True to allow Sentences without label in the corpus.
         :param encoding: Default is 'uft-8' but some datasets are in 'latin-1
         :return: a Corpus with annotated train, dev and test data
         """
@@ -73,6 +75,7 @@ class ClassificationCorpus(Corpus):
             memory_mode=memory_mode,
             label_name_map=label_name_map,
             skip_labels=skip_labels,
+            allow_examples_without_labels=allow_examples_without_labels,
             encoding=encoding,
         )
 
@@ -87,6 +90,7 @@ class ClassificationCorpus(Corpus):
             memory_mode=memory_mode,
             label_name_map=label_name_map,
             skip_labels=skip_labels,
+            allow_examples_without_labels=allow_examples_without_labels,
             encoding=encoding,
         ) if test_file is not None else None
 
@@ -101,6 +105,7 @@ class ClassificationCorpus(Corpus):
             memory_mode=memory_mode,
             label_name_map=label_name_map,
             skip_labels=skip_labels,
+            allow_examples_without_labels=allow_examples_without_labels,
             encoding=encoding,
         ) if dev_file is not None else None
 
@@ -125,6 +130,7 @@ class ClassificationDataset(FlairDataset):
             memory_mode: str = "partial",
             label_name_map: Dict[str, str] = None,
             skip_labels: List[str] = None,
+            allow_examples_without_labels=False,
             encoding: str = 'utf-8',
     ):
         """
@@ -143,6 +149,7 @@ class ClassificationDataset(FlairDataset):
         if full corpus and all embeddings fits into memory for speedups during training. Otherwise use 'partial' and if
         even this is too much for your memory, use 'disk'.
         :param label_name_map: Optionally map label names to different schema.
+        :param allow_examples_without_labels: set to True to allow Sentences without label in the Dataset.
         :param encoding: Default is 'uft-8' but some datasets are in 'latin-1
         :return: list of sentences
         """
@@ -169,6 +176,7 @@ class ClassificationDataset(FlairDataset):
         self.truncate_to_max_tokens = truncate_to_max_tokens
         self.filter_if_longer_than = filter_if_longer_than
         self.label_name_map = label_name_map
+        self.allow_examples_without_labels = allow_examples_without_labels
 
         self.path_to_file = path_to_file
 
@@ -176,7 +184,7 @@ class ClassificationDataset(FlairDataset):
             line = f.readline()
             position = 0
             while line:
-                if "__label__" not in line or (" " not in line and "\t" not in line):
+                if ("__label__" not in line and not allow_examples_without_labels) or (" " not in line and "\t" not in line):
                     position = f.tell()
                     line = f.readline()
                     continue
@@ -219,7 +227,7 @@ class ClassificationDataset(FlairDataset):
                     text = line[l_len:].strip()
 
                     # if so, add to indices
-                    if text and label:
+                    if text and (label or allow_examples_without_labels):
 
                         if self.memory_mode == 'partial':
                             self.lines.append(line)
@@ -257,7 +265,7 @@ class ClassificationDataset(FlairDataset):
         if self.truncate_to_max_chars > 0:
             text = text[: self.truncate_to_max_chars]
 
-        if text and labels:
+        if text and (labels or self.allow_examples_without_label):
             sentence = Sentence(text, use_tokenizer=tokenizer)
 
             for label in labels:
@@ -1571,6 +1579,82 @@ class TREC_6(ClassificationCorpus):
                             write_fp.write(f"{new_label} {question}\n")
 
         super(TREC_6, self).__init__(
+            data_folder, label_type='question_type', tokenizer=tokenizer, memory_mode=memory_mode, **corpusargs,
+        )
+
+
+class YAHOO_ANSWERS(ClassificationCorpus):
+    """
+    The YAHOO Question Classification Corpus, classifying questions into 10 coarse-grained answer types
+    """
+
+    def __init__(self,
+                 base_path: Union[str, Path] = None,
+                 tokenizer: Union[bool, Callable[[str], List[Token]], Tokenizer] = SpaceTokenizer(),
+                 memory_mode='partial',
+                 **corpusargs
+                 ):
+        """
+        Instantiates YAHOO Question Classification Corpus with 10 classes.
+        :param base_path: Provide this only if you store the YAHOO corpus in a specific folder, otherwise use default.
+        :param tokenizer: Custom tokenizer to use (default is SpaceTokenizer)
+        :param memory_mode: Set to 'partial' by default since this is a rather big corpus. Can also be 'full' or 'none'.
+        :param corpusargs: Other args for ClassificationCorpus.
+        """
+
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = Path(flair.cache_root) / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        url = "https://s3.amazonaws.com/fast-ai-nlp/yahoo_answers_csv.tgz"
+
+        label_map = {'1': 'Society_&_Culture',
+                     '2': 'Science_&_Mathematics',
+                     '3': 'Health',
+                     '4': 'Education_&_Reference',
+                     '5': 'Computers_&_Internet',
+                     '6': 'Sports',
+                     '7': 'Business_&_Finance',
+                     '8': 'Entertainment_&_Music',
+                     '9': 'Family_&_Relationships',
+                     '10': 'Politics_&_Government'}
+
+        original = Path(flair.cache_root) / "datasets" / dataset_name / "original"
+
+        if not (data_folder / "train.txt").is_file():
+            cached_path(url, original)
+
+
+            import tarfile
+
+            tar = tarfile.open(original / "yahoo_answers_csv.tgz", "r:gz")
+            members = []
+
+            for member in tar.getmembers():
+                if("test.csv" in member.name or "train.csv" in member.name):
+                    members.append(member)
+
+            tar.extractall(original, members=members)
+
+            for name in ["train", "test"]:
+                file = open(original / "yahoo_answers_csv" / (name+".csv"))
+                reader = csv.reader(file)
+                writer = open(data_folder / (name+".txt"), "wt", encoding="utf-8")
+                for row in reader:
+                    writer.write("__label__"+label_map.get(row[0])+" "+row[1]+"\n")
+
+                file.close()
+                writer.close()
+
+        super(YAHOO_ANSWERS, self).__init__(
             data_folder, label_type='question_type', tokenizer=tokenizer, memory_mode=memory_mode, **corpusargs,
         )
 
