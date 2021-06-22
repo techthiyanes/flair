@@ -13,8 +13,9 @@ import csv
 
 
 import flair
-from flair.data import Corpus, MultiCorpus, FlairDataset, Sentence, Token
+from flair.data import Corpus, MultiCorpus, FlairDataset, Sentence, Token, Dictionary
 from flair.datasets.base import find_train_dev_test_files
+from flair.tokenization import SpacySentenceSplitter, SpacyTokenizer
 from flair.file_utils import cached_path, unpack_file, unzip_file
 
 log = logging.getLogger("flair")
@@ -4287,6 +4288,196 @@ def xtreme_to_simple_ner_annotation(data_file: Union[str, Path]):
             else:
                 liste = line.split()
                 f.write(liste[0].split(':', 1)[1] + ' ' + liste[1] + '\n')
+
+
+class AQUAINT_EL(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            in_memory: bool = True,
+            agreement_threshold: float = 0.5,
+            **corpusargs,
+    ):
+        """
+        Initialize Aquaint Entity Linking corpus introduced in: D. Milne and I. H. Witten. Learning to link with wikipedia 
+        (https://www.cms.waikato.ac.nz/~ihw/papers/08-DNM-IHW-LearningToLinkWithWikipedia.pdf). 
+        If you call the constructor the first time the dataset gets automatically downloaded and transformed in tab-separated column format (aquaint.txt). 
+
+        Parameters
+        ----------
+        base_path : Union[str, Path], optional
+            Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+            to point to a different folder but typically this should not be necessary.
+        in_memory: If True, keeps dataset in memory giving speedups in training.
+        agreement_threshold: Some link annotations come with an agreement_score representing the agreement from the human annotators. The score ranges from lowest 0.2
+                             to highest 1.0. The lower the score, the less "important" is the entity because fewer annotators thought it was worth linking.
+                             Default is 0.5 which means the majority of annotators must have annoteted the respective entity mention.
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+            
+        self.agreement_threshold = agreement_threshold
+
+        # column format
+        columns = {0: "text", 1: "nel"}
+
+        # this dataset name 
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+
+        aquaint_el_path = "https://www.nzdl.org/wikification/data/wikifiedStories.zip"
+        corpus_file_name = "aquaint.txt"
+        parsed_dataset = data_folder / corpus_file_name
+        
+        # download and parse data if necessary
+        if not parsed_dataset.exists():
+            aquaint_el_zip = cached_path(f"{aquaint_el_path}", Path("datasets") / dataset_name)
+            unpack_file(aquaint_el_zip, data_folder, "zip", False)
+            
+            #we need a sentence splitter, since the data contains text with more than one sentence and in our column format we want an empty line after each sentence
+            spacy_splitter = SpacySentenceSplitter('en_core_web_sm', tokenizer = SpacyTokenizer('en_core_web_sm'))
+            spacy_tokenizer = SpacyTokenizer('en_core_web_sm')
+
+            with open(parsed_dataset, "w", encoding='utf-8') as txt_out:
+                
+                #iterate over all html files 
+                for file in os.listdir(data_folder):
+                    if not file.endswith(".htm"):
+                        continue
+
+                    with open(str(data_folder / file), "r", encoding='utf-8') as txt_in:
+                        text= txt_in.read()
+                    
+                    #get rid of html syntax, we only need the text
+                    strings = text.split("<p> ")
+                    strings[0] = strings[0].split('<h1 id="header">')[1][:-7]
+                    
+                    for i in range(1,len(strings)-1):
+                        strings[i] = strings[i][:-7]
+                        
+                    strings[-1] = strings[-1][:-23]
+                    
+                    #between all documents we write a separator symbol
+                    txt_out.write('-DOCSTART-\n\n')
+                    
+                    for string in strings: 
+                        
+                        #process the annotation format in the text and collect wiki-page names
+                        wikinames = []
+                        number_of_tokens = []#number of tokens corresponding to one entity mention
+                        
+                        current_entity = string.find('[[')#each annotation starts with '[['
+                        while current_entity != -1:
+                            wikiname=''
+                            surface_form = ''
+                            j = current_entity + 2
+                            
+                            while string[j] not in [']','|']:
+                                wikiname+=string[j]
+                                j+=1
+                        
+                            if string[j] == ']': #entity mention ends, i.e. looks like this [[wikiname]]
+                                surface_form = wikiname#in this case entity mention = wiki-page name
+                            else: #string[j] == '|'
+                                j+=1
+                                while string[j] not in [']','|']:
+                                    surface_form+=string[j]
+                                    j+=1
+                                    
+                                if string[j] == '|': #entity has a score, i.e. looks like this [[wikiname|surface_form|agreement_score]] 
+                                    agreement_score=float(string[j+1:j+4])
+                                    j+=4 #points to first ']' of entity now
+                                    if agreement_score < self.agreement_threshold: #discard entity 
+                                        string = string[:current_entity] + surface_form + string[j+2:]
+                                        current_entity = string.find('[[')
+                                        continue
+                            
+                            #replace [[wikiname|surface_form|score]] by aaasurface_form and save wikiname and (tokenized) length in list
+                            wikinames.append(wikiname[0].upper() + wikiname.replace(' ','_')[1:])
+                            number_of_tokens.append(len(spacy_tokenizer.tokenize(surface_form)))
+                            string = string[:current_entity] + 'aaa' + surface_form +  string[j+2:]
+                            
+                            current_entity = string.find('[[')
+                            
+                        
+                        #write to out-file in column format
+
+                        #sentence splitting and tokenization
+                        sentences=spacy_splitter.split(string)
+            
+                        entity_index = 0
+                        for sen in sentences:
+                            i = 0
+                            while i < len(sen):
+                                if sen[i].text.startswith("aaa"):#begin of entity mention
+                                    
+                                    txt_out.write(sen[i].text[3:] + '\tB-' + wikinames[entity_index] + '\n')
+                                    
+                                    for j in range(i+1, i+number_of_tokens[entity_index]):
+
+                                        txt_out.write(sen[j].text + '\tI-' + wikinames[entity_index] + '\n')
+    
+                                    i+=number_of_tokens[entity_index]
+                                    entity_index+=1
+                                else: 
+                                    txt_out.write(sen[i].text + '\tO\n')
+                                    i+=1
+                            txt_out.write('\n') #empty line after sentence
+            
+        super(AQUAINT_EL, self).__init__(
+            data_folder,
+            columns,
+            train_file=corpus_file_name,
+            column_delimiter="\t",
+            in_memory=in_memory,
+            document_separator_token="-DOCSTART-",
+            **corpusargs,
+        )
+        
+    def make_entity_dict(self, threshold: int = 1) -> Dictionary:
+        """
+        Create ID-dictionary for the wikipedia-page names.
+        param threshold: Ignore links that occur less than threshold value
+        
+        In entity_occurences all wikinames and their number of occurence is saved.
+        ent_dictionary contains all wikinames that occure at least threshold times and gives each name an ID
+        """
+        self.entity_occurences = {'O': 0}
+        self.total_number_of_annotations = 0
+        for sentence in self.get_all_sentences():
+            if not sentence.is_document_boundary:
+                i=0
+                while i < len(sentence):
+                    annotation = sentence[i].get_tag('nel').value
+                    if annotation == 'O':
+                        self.entity_occurences['O']+=1
+                    else: 
+                        annotation=annotation[2:]#remove BIO-tag
+                        self.total_number_of_annotations+=1
+                        if annotation in self.entity_occurences:
+                            self.entity_occurences[annotation]+=1
+                        else:
+                            self.entity_occurences[annotation]=1
+                            
+                        #skip annotations that belong to same entity mention
+                        j=i+1
+                        while (j < len(sentence) and sentence[j].get_tag('nel').value[2:] == annotation):
+                            j+=1
+                            i+=1
+                    i+=1
+        # Make the annotation dictionary
+        self.ent_dictionary: Dictionary = Dictionary(add_unk=True)
+
+        for x in self.entity_occurences:
+            if self.entity_occurences[x] >= threshold:
+                self.ent_dictionary.add_item(x)
+
+        return self.ent_dictionary
 
 
 class REDDIT_EL_GOLD(ColumnCorpus):
