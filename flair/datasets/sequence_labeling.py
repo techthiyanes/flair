@@ -4288,9 +4288,82 @@ def xtreme_to_simple_ner_annotation(data_file: Union[str, Path]):
             else:
                 liste = line.split()
                 f.write(liste[0].split(':', 1)[1] + ' ' + liste[1] + '\n')
+                
+
+class EntityLinkingCorpus(ColumnCorpus):
+    def __init__(
+            self,
+            data_folder,
+            train_file,
+            columns = {0: "text", 1: "nel"},
+            column_delimiter="\t",
+            in_memory = True,
+            document_separator_token = '-DOCSTART-',
+            **corpusargs,
+    ):
+        """
+        Super class for all entity linking corpora. Expects the data to be in column format with one column for words and another one for BIO-tags and wikipedia-page 
+        name, e.g. B-Brad_Pitt.
+        The class provides the function make_entity_dict
+        """
+
+        #make_entity_dict() hier direkt aufrufen?? Dann braucht man einen threshold für die links schon bei der Initialisierung
+        
+        super(EntityLinkingCorpus, self).__init__(            
+            data_folder,
+            columns,
+            train_file=train_file,
+            column_delimiter=column_delimiter,
+            in_memory=in_memory,
+            document_separator_token=document_separator_token,
+            **corpusargs,
+            )
+        
+        
+    def make_entity_dict(self, threshold: int = 1) -> Dictionary:
+        """
+        Create ID-dictionary for the wikipedia-page names.
+        param threshold: Ignore links that occur less than threshold value
+        
+        In entity_occurences all wikinames and their number of occurence is saved.
+        ent_dictionary contains all wikinames that occure at least threshold times and gives each name an ID
+        """
+        self.entity_occurences = {'O': 0}
+        self.total_number_of_annotations = 0
+        for sentence in self.get_all_sentences():
+            if not sentence.is_document_boundary:
+                i=0
+                while i < len(sentence):
+                    annotation = sentence[i].get_tag('nel').value
+                    if annotation == 'O':
+                        self.entity_occurences['O']+=1
+                    else: 
+                        annotation=annotation[2:]#remove BIO-tag
+                        self.total_number_of_annotations+=1
+                        if annotation in self.entity_occurences:
+                            self.entity_occurences[annotation]+=1
+                        else:
+                            self.entity_occurences[annotation]=1
+                            
+                        #skip annotations that belong to same entity mention
+                        j=i+1
+                        while (j < len(sentence) and sentence[j].get_tag('nel').value[2:] == annotation):
+                            j+=1
+                            i+=1
+                    i+=1
+        # Make the annotation dictionary
+        self.ent_dictionary: Dictionary = Dictionary(add_unk=True)
+    
+        for x in self.entity_occurences:
+            if (self.entity_occurences[x] >= threshold and x != 'O'):
+                self.ent_dictionary.add_item(x)
+        
+    
+        return self.ent_dictionary
 
 
-class AQUAINT_EL(ColumnCorpus):
+
+class AQUAINT_EL(EntityLinkingCorpus):
     def __init__(
             self,
             base_path: Union[str, Path] = None,
@@ -4317,9 +4390,6 @@ class AQUAINT_EL(ColumnCorpus):
             base_path: Path = Path(base_path)
             
         self.agreement_threshold = agreement_threshold
-
-        # column format
-        columns = {0: "text", 1: "nel"}
 
         # this dataset name 
         dataset_name = self.__class__.__name__.lower()
@@ -4431,56 +4501,15 @@ class AQUAINT_EL(ColumnCorpus):
             
         super(AQUAINT_EL, self).__init__(
             data_folder,
-            columns,
             train_file=corpus_file_name,
-            column_delimiter="\t",
             in_memory=in_memory,
-            document_separator_token="-DOCSTART-",
             **corpusargs,
         )
         
-    def make_entity_dict(self, threshold: int = 1) -> Dictionary:
-        """
-        Create ID-dictionary for the wikipedia-page names.
-        param threshold: Ignore links that occur less than threshold value
-        
-        In entity_occurences all wikinames and their number of occurence is saved.
-        ent_dictionary contains all wikinames that occure at least threshold times and gives each name an ID
-        """
-        self.entity_occurences = {'O': 0}
-        self.total_number_of_annotations = 0
-        for sentence in self.get_all_sentences():
-            if not sentence.is_document_boundary:
-                i=0
-                while i < len(sentence):
-                    annotation = sentence[i].get_tag('nel').value
-                    if annotation == 'O':
-                        self.entity_occurences['O']+=1
-                    else: 
-                        annotation=annotation[2:]#remove BIO-tag
-                        self.total_number_of_annotations+=1
-                        if annotation in self.entity_occurences:
-                            self.entity_occurences[annotation]+=1
-                        else:
-                            self.entity_occurences[annotation]=1
-                            
-                        #skip annotations that belong to same entity mention
-                        j=i+1
-                        while (j < len(sentence) and sentence[j].get_tag('nel').value[2:] == annotation):
-                            j+=1
-                            i+=1
-                    i+=1
-        # Make the annotation dictionary
-        self.ent_dictionary: Dictionary = Dictionary(add_unk=True)
-
-        for x in self.entity_occurences:
-            if self.entity_occurences[x] >= threshold:
-                self.ent_dictionary.add_item(x)
-
-        return self.ent_dictionary
 
 
-class REDDIT_EL_GOLD(ColumnCorpus):
+
+class REDDIT_EL_GOLD(EntityLinkingCorpus):
     def __init__(
             self,
             base_path: Union[str, Path] = None,
@@ -4497,9 +4526,6 @@ class REDDIT_EL_GOLD(ColumnCorpus):
         """
         if type(base_path) == str:
             base_path: Path = Path(base_path)
-
-        # column format
-        columns = {0: "text", 1: "ner"}
 
         # this dataset name
         dataset_name = self.__class__.__name__.lower()
@@ -4518,10 +4544,10 @@ class REDDIT_EL_GOLD(ColumnCorpus):
             reddit_el_zip = cached_path(f"{reddit_el_path}", Path("datasets") / dataset_name)
             unpack_file(reddit_el_zip, data_folder, "zip", False)
 
-            with open(data_folder / corpus_file_name, "w") as txtout:
+            with open(data_folder / corpus_file_name, "w", encoding='utf-8') as txtout:
 
                 # First parse the post titles
-                with open(data_folder / "posts.tsv", "r") as tsvin1, open(data_folder / "gold_post_annotations.tsv", "r") as tsvin2:
+                with open(data_folder / "posts.tsv", "r", encoding='utf-8') as tsvin1, open(data_folder / "gold_post_annotations.tsv", "r",encoding='utf-8') as tsvin2:
 
                     posts = csv.reader(tsvin1, delimiter="\t")
                     self.post_annotations = csv.reader(tsvin2, delimiter="\t")
@@ -4546,7 +4572,7 @@ class REDDIT_EL_GOLD(ColumnCorpus):
                             self._text_to_cols(Sentence(row[2], use_tokenizer = True), link_annots, txtout)
 
                 # Then parse the comments
-                with open(data_folder / "comments.tsv", "r") as tsvin3, open(data_folder / "gold_comment_annotations.tsv", "r") as tsvin4:
+                with open(data_folder / "comments.tsv", "r", encoding='utf-8') as tsvin3, open(data_folder / "gold_comment_annotations.tsv", "r", encoding='utf-8') as tsvin4:
 
                     self.comments = csv.reader(tsvin3, delimiter="\t")
                     self.comment_annotations = csv.reader(tsvin4, delimiter="\t")
@@ -4597,11 +4623,8 @@ class REDDIT_EL_GOLD(ColumnCorpus):
 
         super(REDDIT_EL_GOLD, self).__init__(
             data_folder,
-            columns,
             train_file=corpus_file_name,
-            column_delimiter="\t",
             in_memory=in_memory,
-            document_separator_token="-DOCSTART-",
             **corpusargs,
         )
 
@@ -4621,11 +4644,11 @@ class REDDIT_EL_GOLD(ColumnCorpus):
                 # Write the token with a corresponding tag to file
                 try:
                     if any(sentence[i].start_pos == v[0] and sentence[i].end_pos == v[1] for j,v in enumerate(links)):
-                        outfile.writelines(sentence[i].text + "\tS-Link:" + links[link_index[0]][2] + "\n")
+                        outfile.writelines(sentence[i].text + "\tS-" + links[link_index[0]][2] + "\n")
                     elif any(sentence[i].start_pos == v[0] and sentence[i].end_pos != v[1] for j,v in enumerate(links)):
-                        outfile.writelines(sentence[i].text + "\tB-Link:" + links[link_index[0]][2] + "\n")
+                        outfile.writelines(sentence[i].text + "\tB-" + links[link_index[0]][2] + "\n")
                     elif any(sentence[i].start_pos >= v[0] and sentence[i].end_pos <= v[1] for j,v in enumerate(links)):
-                        outfile.writelines(sentence[i].text + "\tI-Link:" + links[link_index[0]][2] + "\n")
+                        outfile.writelines(sentence[i].text + "\tI-" + links[link_index[0]][2] + "\n")
                     else:
                         outfile.writelines(sentence[i].text + "\tO\n")
                 # IndexError is raised in cases when there is exactly one link in a sentence, therefore can be dismissed
