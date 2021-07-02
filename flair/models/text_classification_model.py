@@ -140,7 +140,7 @@ class TextClassifier(flair.nn.Model):
     def forward_loss(
             self, data_points: Union[List[Sentence], Sentence]
     ) -> torch.tensor:
-
+        
         scores = self.forward(data_points)
 
         return self._calculate_loss(scores, data_points)
@@ -514,6 +514,358 @@ class TextClassifier(flair.nn.Model):
                f'  (beta): {self.beta}\n' + \
                f'  (weights): {self.weight_dict}\n' + \
                f'  (weight_tensor) {self.loss_weights}\n)'
+               
+
+class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict function for not 'nel' labeled sentences, i.e. only entities marked e.g. with 'ner' tags!
+    def __init__(
+            self,
+            word_embeddings: flair.embeddings.TokenEmbeddings,
+            label_dictionary: Dictionary,
+            embedding_mode: str = 'average' #'first', 'last', 'firs&tlast'
+    ):
+        
+        self.embedding_mode=embedding_mode
+        
+        super(EntityLinker, self).__init__(word_embeddings,
+                                         label_dictionary,
+                                         label_type='nel'
+                                         )
+        
+        self.word_embeddings = word_embeddings #the super class also saves these embeddings, as "self.document_embeddings"
+        
+        #if we concatenate the embeddings we need double input size in our linear layer
+        if self.embedding_mode == 'first&last':
+            self.decoder = nn.Linear(
+                    2 * self.word_embeddings.embedding_length, len(self.label_dictionary)
+                ).to(flair.device)
+    
+            nn.init.xavier_uniform_(self.decoder.weight)
+            
+        cases = {
+            'average': self.emb_mean,
+            'first': self.emb_first,
+            'last': self.emb_last,
+            'first&last': self.emb_firstAndLast
+            }
+        
+        self.aggregated_embedding = cases.get(embedding_mode)
+    
+    def emb_first(self, arg):
+        return arg[0]
+
+    def emb_last(self, arg):
+        return arg[-1]
+
+    def emb_firstAndLast(self,arg):
+        return torch.cat((arg[0],arg[-1]),0)
+
+    def emb_mean(self, arg):
+        return torch.mean(arg,0)
+    
+    def forward(self, sentences: List[Sentence]): 
+        #embedd all tokens
+        self.word_embeddings.embed(sentences)
+        
+        embedding_names = self.word_embeddings.get_names()
+        
+        embedding_list = []
+        #get the embeddings of the entity mentions
+        for sen in sentences:
+            spans = sen.get_spans('nel')
+            for span in spans:
+                mention_emb = torch.Tensor(0,self.word_embeddings.embedding_length)
+
+                for token in span.tokens:
+                    mention_emb=torch.cat((mention_emb, token.get_embedding(embedding_names).unsqueeze(0)), 0)
+                     
+                embedding_list.append(self.aggregated_embedding(mention_emb).unsqueeze(0))
+
+        if len(embedding_list) > 0:
+            embedding_tensor = torch.cat(embedding_list, 0).to(flair.device)
+            label_scores = self.decoder(embedding_tensor)
+        #No entity mention in given sentences, return None
+        else: 
+            label_scores = None
+
+        return label_scores
+    
+    def _forward_scores_and_loss(self, data_points: Union[List[Sentence], Sentence], return_loss=False):
+        
+        scores = self.forward(data_points)
+        
+        loss = None
+        if return_loss:
+            if scores != None:  #no annotations (no entity mentions) in given (list of) sentences 
+                loss = self._calculate_loss(scores, data_points)
+            else:
+                loss=torch.Tensor([0])
+                loss.requires_grad_()
+
+        return scores, loss
+    
+    def forward_loss(
+            self, data_points: Union[List[Sentence], Sentence]
+    ) -> torch.tensor:
+
+        scores = self.forward(data_points)
+        
+        if scores != None:
+            return self._calculate_loss(scores, data_points)
+        else:
+            return torch.Tensor([0]).requires_grad_()
+    
+    def _labels_to_indices(self, sentences: List[Sentence]):
+        
+        indices = []
+        for sen in sentences:
+            spans = sen.get_spans('nel')
+            for span in spans:
+                indices.append(self.label_dictionary.get_idx_for_item(span.tag))        
+                    
+        vec = torch.LongTensor(indices).to(flair.device)
+
+        return vec
+    
+    def predict(
+            self,
+            sentences: Union[List[Sentence], Sentence],
+            mini_batch_size: int = 32,
+            multi_class_prob: bool = False,
+            verbose: bool = False,
+            label_name: Optional[str] = None,
+            return_loss=False,
+            embedding_storage_mode="none",
+    ):
+        """
+        Predicts the class labels for the given sentences. The labels are directly added to the sentences.
+        :param sentences: list of sentences
+        :param mini_batch_size: mini batch size to use
+        :param multi_class_prob : return probability for all class for multiclass
+        :param verbose: set to True to display a progress bar
+        :param return_loss: set to True to return loss
+        :param label_name: set this to change the name of the label type that is predicted
+        :param embedding_storage_mode: default is 'none' which is always best. Only set to 'cpu' or 'gpu' if
+        you wish to not only predict, but also keep the generated embeddings in CPU or GPU memory respectively.
+        'gpu' to store embeddings in GPU memory.
+        """
+        if label_name == None:
+            label_name = self.label_type if self.label_type is not None else 'label'
+
+        with torch.no_grad():
+            if not sentences:
+                return sentences
+
+            if isinstance(sentences, DataPoint):
+                sentences = [sentences]
+
+            # filter empty sentences
+            if isinstance(sentences[0], DataPoint):
+                sentences = [sentence for sentence in sentences if len(sentence) > 0]
+            if len(sentences) == 0: return sentences
+
+            # reverse sort all sequences by their length
+            rev_order_len_index = sorted(
+                range(len(sentences)), key=lambda k: len(sentences[k]), reverse=True
+            )
+
+            reordered_sentences: List[Union[DataPoint, str]] = [
+                sentences[index] for index in rev_order_len_index
+            ]
+
+            dataloader = DataLoader(
+                dataset=SentenceDataset(reordered_sentences), batch_size=mini_batch_size
+            )
+            # progress bar for verbosity
+            if verbose:
+                dataloader = tqdm(dataloader)
+            overall_loss = 0
+            batch_no = 0
+            for batch in dataloader:
+                #print(batch)
+
+                batch_no += 1
+
+                if verbose:
+                    dataloader.set_description(f"Inferencing on batch {batch_no}")
+
+                # stop if all sentences are empty
+                if not batch:
+                    continue
+
+                scores, loss = self._forward_scores_and_loss(batch, return_loss)
+                
+                if scores==None:#no entity mentions in batch
+                    continue
+
+                if return_loss:
+                    overall_loss += loss
+
+                predicted_labels = self._obtain_labels(scores, predict_prob=multi_class_prob)
+                #TODO: Here it is possible to work with multiple entity candidates if multi_class_prob=True, the set is suggested from our NN
+                
+                label_number = 0
+                for sen in batch:
+                    spans = sen.get_spans('nel')
+                    for span in spans:
+                        first = True
+                        for token in span:
+                            #set label for all tokens in entity mention
+                            
+                            #we do not care about multi labels at this point
+                            label = predicted_labels[label_number][0]
+                            
+                            #we must add the B/I-tags so that "get_spans('predicted')" works correctly
+                            if first:
+                                token.add_tag(tag_type=label_name, tag_value='B-'+label.value, confidence=label.score)
+                                first=False
+                            else:
+                                token.add_tag(tag_type=label_name, tag_value='I-'+label.value, confidence=label.score)
+                        label_number+=1
+                
+                # clearing token embeddings to save memory
+                #TODO: Does this work properly??? NOOOOO: works on sentences!!!
+                #store_embeddings(batch, storage_mode=embedding_storage_mode)
+
+            if return_loss:
+                return overall_loss / batch_no
+
+    def evaluate(
+            self,
+            sentences: Union[List[DataPoint], Dataset],
+            out_path: Union[str, Path] = None,
+            embedding_storage_mode: str = "none",
+            mini_batch_size: int = 32,
+            num_workers: int = 8,
+            #main_score_type: Tuple[str, str]=("micro avg", 'f1-score'),#TODO: Classification_report_dict does not contain key 'micro avg'
+            main_score_type: Tuple[str, str]=("macro avg", 'f1-score'),
+            return_predictions: bool = False
+    ) -> (Result, float):
+
+
+        # read Dataset into data loader (if list of sentences passed, make Dataset first)
+        if not isinstance(sentences, Dataset):
+            sentences = SentenceDataset(sentences)
+        data_loader = DataLoader(sentences, batch_size=mini_batch_size, num_workers=num_workers)
+
+        # use scikit-learn to evaluate
+        y_true = []
+        y_pred = []
+
+        with torch.no_grad():
+            eval_loss = 0
+
+
+            lines: List[str] = []
+            batch_count: int = 0
+
+            for batch in data_loader:
+                batch_count += 1
+
+                # remove previously predicted labels
+                
+                for sentence in batch:
+                    for token in sentence:
+                        token.remove_labels('predicted')
+                        
+                        
+                # predict for batch
+                loss = self.predict(batch,
+                                    embedding_storage_mode=embedding_storage_mode,
+                                    mini_batch_size=mini_batch_size,
+                                    label_name='predicted',
+                                    return_loss=True)
+                
+                eval_loss += loss
+                                        
+                #get the predicted and gold labels
+                for sen in batch:
+                    spans_predicted = sen.get_spans('predicted')
+                    spans_gold = sen.get_spans('nel')
+                    for span_predicted,span_gold in zip(spans_predicted, spans_gold):
+                        
+                        entity_mention = span_predicted.to_original_text()
+                        annotation = span_gold.tag
+                        prediction = span_predicted.tag
+                        
+                        eval_line= "{}\tsurface form: {}\t wikiname: {}\tprediction: {}\n".format(sen.to_plain_string(), entity_mention, annotation, prediction)
+                        lines.append(eval_line)
+                        
+                        y_true.append(self.label_dictionary.get_idx_for_item(annotation))
+                        y_pred.append(self.label_dictionary.get_idx_for_item(prediction))
+
+                #TODO: Does work on sentences and not on tokens!!
+                #store_embeddings(batch, embedding_storage_mode)
+                
+            if out_path is not None:
+                with open(out_path, "w", encoding="utf-8") as outfile:
+                    outfile.write("".join(lines))
+                
+            #TODO: I DONT SEE THIS PROBLEM
+            # remove predicted labels if return_predictions is False
+            # Problem here: the predictions are only contained in sentences if it was chosen memory_mode="full" during
+            # creation of the ClassificationDataset in the ClassificationCorpus creation. If the ClassificationCorpus has
+            # memory mode "partial", then the predicted labels are not contained in sentences in any case so the following
+            # optional removal has no effect. Predictions won't be accessible outside the eval routine in this case regardless
+            # whether return_predictions is True or False. TODO: fix this
+
+            if not return_predictions:
+                for sentence in sentences:
+                    for token in sentence:
+                        token.remove_labels('predicted')
+
+            # make "classification report"
+        
+            #indices contains ID's of those entities that appear in either the gold or predicted labels
+            #note that set automatically sorts them increasingly, which we need for classification_report to work properly
+            indices = set(y_true+y_pred) 
+            target_names = []
+            for i in indices:
+                target_names.append(self.label_dictionary.get_item_for_index(i))
+            
+            classification_report = metrics.classification_report(y_true, y_pred, digits=4,
+                                                                  target_names=target_names, zero_division=0)
+            classification_report_dict = metrics.classification_report(y_true, y_pred, digits=4,
+                                                                  target_names=target_names, zero_division=0, output_dict=True)
+            
+            # get scores
+            micro_f_score = round(metrics.fbeta_score(y_true, y_pred, beta=self.beta, average='micro', zero_division=0),
+                                  4)
+            accuracy_score = round(metrics.accuracy_score(y_true, y_pred), 4)
+            macro_f_score = round(metrics.fbeta_score(y_true, y_pred, beta=self.beta, average='macro', zero_division=0),
+                                  4)
+            precision_score = round(metrics.precision_score(y_true, y_pred, average='macro', zero_division=0), 4)
+            recall_score = round(metrics.recall_score(y_true, y_pred, average='macro', zero_division=0), 4)
+
+            detailed_result = (
+                    "\nResults:"
+                    f"\n- F-score (micro) {micro_f_score}"
+                    f"\n- F-score (macro) {macro_f_score}"
+                    f"\n- Accuracy {accuracy_score}"
+                    '\n\nBy class:\n' + classification_report
+            )
+
+            # line for log file
+            if not self.multi_label:
+                log_header = "ACCURACY"
+                log_line = f"\t{accuracy_score}"
+            else:
+                log_header = "PRECISION\tRECALL\tF1\tACCURACY"
+                log_line = f"{precision_score}\t" \
+                           f"{recall_score}\t" \
+                           f"{macro_f_score}\t" \
+                           f"{accuracy_score}"
+
+            result = Result(
+                main_score=classification_report_dict[main_score_type[0]][main_score_type[1]],
+                log_line=log_line,
+                log_header=log_header,
+                detailed_results=detailed_result,
+                classification_report=classification_report_dict
+            )
+
+            eval_loss /= batch_count
+
+            return result, eval_loss
 
 
 class TextPairClassifier(TextClassifier):

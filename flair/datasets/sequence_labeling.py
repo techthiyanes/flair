@@ -4306,7 +4306,7 @@ class EntityLinkingCorpus(ColumnCorpus):
         name, e.g. B-Brad_Pitt.
         The class provides the function make_entity_dict
         """
-
+        #TODO: Add a routine, that checks annotations for some widespread errors/inconsistencies??? (e.g. in AQUAINT corpus Iran-Iraq_War vs. Iran-Iraq_war)
         #make_entity_dict() hier direkt aufrufen?? Dann braucht man einen threshold für die links schon bei der Initialisierung
         
         super(EntityLinkingCorpus, self).__init__(            
@@ -4321,6 +4321,7 @@ class EntityLinkingCorpus(ColumnCorpus):
         
         
     def make_entity_dict(self, threshold: int = 1) -> Dictionary:
+        #TODO: parameter, annotation weg in den Daten für mentions unter threshold
         """
         Create ID-dictionary for the wikipedia-page names.
         param threshold: Ignore links that occur less than threshold value
@@ -4328,37 +4329,27 @@ class EntityLinkingCorpus(ColumnCorpus):
         In entity_occurences all wikinames and their number of occurence is saved.
         ent_dictionary contains all wikinames that occure at least threshold times and gives each name an ID
         """
-        self.entity_occurences = {'O': 0}
+        self.entity_occurences = {}
         self.total_number_of_annotations = 0
         for sentence in self.get_all_sentences():
-            if not sentence.is_document_boundary:
-                i=0
-                while i < len(sentence):
-                    annotation = sentence[i].get_tag('nel').value
-                    if annotation == 'O':
-                        self.entity_occurences['O']+=1
-                    else: 
-                        annotation=annotation[2:]#remove BIO-tag
-                        self.total_number_of_annotations+=1
-                        if annotation in self.entity_occurences:
-                            self.entity_occurences[annotation]+=1
-                        else:
-                            self.entity_occurences[annotation]=1
-                            
-                        #skip annotations that belong to same entity mention
-                        j=i+1
-                        while (j < len(sentence) and sentence[j].get_tag('nel').value[2:] == annotation):
-                            j+=1
-                            i+=1
-                    i+=1
+            if not sentence.is_document_boundary:#exclude "-DOCSTART-"-sentences
+            
+                spans = sentence.get_spans('nel')
+                for span in spans:
+                    annotation = span.tag
+                    self.total_number_of_annotations+=1
+                    if annotation in self.entity_occurences:
+                        self.entity_occurences[annotation]+=1
+                    else:
+                        self.entity_occurences[annotation]=1
+                        
         # Make the annotation dictionary
         self.ent_dictionary: Dictionary = Dictionary(add_unk=True)
     
         for x in self.entity_occurences:
-            if (self.entity_occurences[x] >= threshold and x != 'O'):
+            if self.entity_occurences[x] >= threshold:
                 self.ent_dictionary.add_item(x)
         
-    
         return self.ent_dictionary
 
 
@@ -4470,7 +4461,7 @@ class AQUAINT_EL(EntityLinkingCorpus):
                             #replace [[wikiname|surface_form|score]] by aaasurface_form and save wikiname and (tokenized) length in list
                             wikinames.append(wikiname[0].upper() + wikiname.replace(' ','_')[1:])
                             number_of_tokens.append(len(spacy_tokenizer.tokenize(surface_form)))
-                            string = string[:current_entity] + 'aaa' + surface_form +  string[j+2:]
+                            string = string[:current_entity] + 'aaa' + surface_form +  string[j+2:]#TODO: Change to (begin, end, entity) logic
                             
                             current_entity = string.find('[[')
                             
@@ -4506,6 +4497,184 @@ class AQUAINT_EL(EntityLinkingCorpus):
             **corpusargs,
         )
         
+
+class IITB_EL(EntityLinkingCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            in_memory: bool = True,
+            ignore_disagreements: bool = False,#if set, annotations with annotator disagreement will be ignored
+            **corpusargs
+    ):
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+            
+
+        # this dataset name 
+        dataset_name = self.__class__.__name__.lower() 
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+        
+        iitb_el_docs_path = "https://www.cse.iitb.ac.in/~soumen/doc/CSAW/Annot/CSAW_crawledDocs.tar.gz"
+        iitb_el_annotations_path = "https://www.cse.iitb.ac.in/~soumen/doc/CSAW/Annot/CSAW_Annotations.xml"
+        corpus_file_name = "iitb.txt"
+        parsed_dataset = data_folder / corpus_file_name
+        
+        if not parsed_dataset.exists():
+        
+            docs_zip_path = cached_path(f"{iitb_el_docs_path}", Path("datasets") / dataset_name)
+            annotations_xml_path = cached_path(f"{iitb_el_annotations_path}", Path("datasets") / dataset_name)
+            
+            unpack_file(docs_zip_path, data_folder, "tar", False)
+            
+            import xml.etree.ElementTree as ET
+            tree = ET.parse(annotations_xml_path)
+            root = tree.getroot()
+            
+            #names of raw text documents
+            doc_names= set()
+            for elem in root:
+                doc_names.add(elem[0].text)
+
+            spacy_splitter = SpacySentenceSplitter('en_core_web_sm', tokenizer = SpacyTokenizer('en_core_web_sm'))
+            
+            #open output_file
+            with open(parsed_dataset, 'w', encoding='utf-8') as write:
+                #iterate through all documents
+                for doc_name in doc_names:
+                    with open(data_folder / 'crawledDocs' / doc_name, 'r', encoding='utf-8') as read:
+                        text = read.read()
+                        
+                        #split sentences and tokenize
+                        sentences = spacy_splitter.split(text)
+                        sentence_offsets = [sentence.start_pos for sentence in sentences]
+
+                        #iterate through all annotations and add to corresponding tokens
+                        for elem in root:
+                            
+                            if elem[0].text == doc_name and elem[2].text: #annotation belongs to current document
+                            
+                                wikiname = elem[2].text.replace(' ','_')
+                                mention_start = int(elem[3].text)
+                                mention_length = int(elem[4].text)
+                                
+                                #find sentence to which annotation belongs
+                                sentence_index = 0
+                                for i in range(1, len(sentences)):
+                                    if mention_start < sentence_offsets[i]:
+                                        break
+                                    else:
+                                        sentence_index+=1
+                                        
+                                #position within corresponding sentence
+                                mention_start-=sentence_offsets[sentence_index]
+                                mention_end=mention_start+mention_length
+                                
+                                #set annotation for tokens of entity mention
+                                first = True
+                                for token in sentences[sentence_index].tokens:
+                                    if token.start_pos >= mention_start and token.end_pos <= mention_end:#token belongs to entity mention
+                                        if first:
+                                            token.set_label(label_type=elem[1].text, value='B-'+wikiname)
+                                            first = False
+                                        else:
+                                            token.set_label(label_type=elem[1].text, value='I-'+wikiname)
+                                            
+                        #write to out file
+                        write.write('-DOCSTART-\n\n')#each file is one document
+                        
+                        for sentence in sentences:
+                            
+                            for token in sentence.tokens:
+                                
+                                labels = token.labels
+                                
+                                if len(labels) == 0:#no entity
+                                    write.write(token.text + '\tO\n')
+                                    
+                                elif len(labels) == 1:#annotation from one annotator
+                                    write.write(token.text + '\t' + labels[0].value + '\n')
+                                    
+                                else: #annotations from two annotators
+                                
+                                    if labels[0].value == labels[1].value:#annotators agree
+                                        write.write(token.text + '\t' + labels[0].value+ '\n')
+                                        
+                                    else: #annotators disagree: ignore or arbitrarily take first annotation
+                                    
+                                        if ignore_disagreements:
+                                            write.write(token.text + '\tO\n')
+                                            
+                                        else: 
+                                            write.write(token.text + '\t' + labels[0].value+ '\n')
+                                             
+                            write.write('\n')#empty line after each sentence
+                            
+        super(IITB_EL, self).__init__(
+            data_folder,
+            train_file=corpus_file_name,
+            in_memory=in_memory,
+            **corpusargs,
+        )           
+        
+        
+        
+class TWEEKI_EL(EntityLinkingCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+            
+
+        # this dataset name 
+        dataset_name = self.__class__.__name__.lower() 
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+        
+        tweeki_gold_el_path = "https://raw.githubusercontent.com/ucinlp/tweeki/main/data/Tweeki_gold/Tweeki_gold"
+        corpus_file_name = "tweeki_gold.txt"
+        parsed_dataset = data_folder / corpus_file_name
+        
+        # download and parse data if necessary
+        if not parsed_dataset.exists():
+        
+            original_file_path = cached_path(f"{tweeki_gold_el_path}", Path("datasets") / dataset_name)
+            
+            with open(original_file_path, 'r', encoding='utf-8') as read, open(parsed_dataset, 'w', encoding='utf-8') as write:
+                line = read.readline()
+                while line:
+                    if line.startswith('#'):
+                        out_line = ''
+                    elif line == '\n': #tweet ends
+                        out_line = '\n-DOCSTART-\n\n'
+                    else:
+                        line_list=line.split('\t')
+                        out_line = line_list[1] + '\t'
+                        if line_list[3] == '-\n': #no wiki name
+                            out_line += 'O\n'
+                        else:
+                            out_line += line_list[2][:2] + line_list[3].split('|')[0].replace(' ', '_') + '\n'
+                    write.write(out_line)
+                    line = read.readline()
+            
+            os.rename(original_file_path, str(original_file_path) + '_original')
+            
+        super(TWEEKI_EL, self).__init__(
+            data_folder,
+            train_file=corpus_file_name,
+            in_memory=in_memory,
+            **corpusargs,
+        )
 
 
 
