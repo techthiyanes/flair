@@ -548,7 +548,6 @@ class CONLL_03(ColumnCorpus):
             self,
             base_path: Union[str, Path] = None,
             tag_to_bioes: str = "ner",
-            entity_linking:bool = False,
             in_memory: bool = True,
             **corpusargs,
     ):
@@ -568,29 +567,15 @@ class CONLL_03(ColumnCorpus):
             base_path: Path = Path(base_path)
 
         # column format
-        if not entity_linking:
-            columns = {0: "text", 1: "pos", 2: "np", 3: "ner"}
-        else:
-            columns = {0: "text", 1: "pos", 2: "np", 3: "ner", 4: 'tmp',5:'entity' ,6:'normalised entity', 7: 'link', 8:'tmp_nr', 9:'tmpLink'}
+        columns = {0: "text", 1: "pos", 2: "np", 3: "ner"}
 
         # this dataset name
-        if entity_linking:
-            dataset_name = self.__class__.__name__.lower()+"-yago-reduced"
-        else:
-            dataset_name = self.__class__.__name__.lower()
+        dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
         if not base_path:
             base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
-
-        if entity_linking:
-            print('Test')
-            conll_yago_path = "https://nlp.informatik.hu-berlin.de/resources/datasets/conll_entity_linking/"
-            cached_path(f"{conll_yago_path}combinedENG.testa", Path("datasets") / dataset_name)
-            cached_path(f"{conll_yago_path}combinedENG.testb", Path("datasets") / dataset_name)
-            cached_path(f"{conll_yago_path}combinedENG.train", Path("datasets") / dataset_name)
-            
 
 
         # check if data there
@@ -602,25 +587,14 @@ class CONLL_03(ColumnCorpus):
             )
             log.warning("-" * 100)
 
-        if entity_linking:
-            super(CONLL_03, self).__init__(
-                data_folder,
-                columns,
-                tag_to_bioes=tag_to_bioes,
-                column_delimiter='\t',
-                in_memory=in_memory,
-                document_separator_token="-DOCSTART-",
-                **corpusargs,
-            )
-        else:    
-            super(CONLL_03, self).__init__(
-                data_folder,
-                columns,
-                tag_to_bioes=tag_to_bioes,
-                in_memory=in_memory,
-                document_separator_token="-DOCSTART-",
-                **corpusargs,
-            )
+        super(CONLL_03, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            in_memory=in_memory,
+            document_separator_token="-DOCSTART-",
+            **corpusargs,
+        )
 
 
 class CONLL_03_GERMAN(ColumnCorpus):
@@ -4497,7 +4471,72 @@ class AQUAINT_EL(EntityLinkingCorpus):
             **corpusargs,
         )
         
+        
+class AIDA_CONLL_EL(EntityLinkingCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            in_memory: bool = True,
+            **corpusargs
+    ):
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+            
+        # this dataset name 
+        dataset_name = self.__class__.__name__.lower() 
 
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+        
+        conll_yago_path = "https://nlp.informatik.hu-berlin.de/resources/datasets/conll_entity_linking/"
+        corpus_file_name = "train"
+        parsed_dataset = data_folder / corpus_file_name
+        
+        if not parsed_dataset.exists():
+            testa_unprocessed_path=cached_path(f"{conll_yago_path}combinedENG.testa", Path("datasets") / dataset_name)
+            testb_unprocessed_path=cached_path(f"{conll_yago_path}combinedENG.testb", Path("datasets") / dataset_name)
+            train_unprocessed_path=cached_path(f"{conll_yago_path}combinedENG.train", Path("datasets") / dataset_name)
+            
+            
+            for name,path in zip(['train', 'testa', 'testb'], [train_unprocessed_path, testa_unprocessed_path, testb_unprocessed_path]):
+                with open(data_folder / name, 'w', encoding='utf-8') as write, open(path, 'r', encoding='utf-8') as read:
+                    line=read.readline()
+                    while line:
+                        if line == '\t\n': #empty line
+                            #write empty line
+                            write.write('\n')
+                            #check if next line is empty as well --> document ends
+                            line=read.readline()
+                            if line == '\t\n':
+                                write.write('-DOCSTART-\n\n')
+                                line=read.readline()
+                        else: #text
+                            row = line.split('\t')
+                            #print(row)
+                            if row[3] == 'O': #no entity
+                                write.write(row[0] + '\tO\n')
+                            else:
+                                if row[6] == '--NME--\n': #"no matching entity", handle as no entity 
+                                    write.write(row[0] + '\tO\n')
+                                else:
+                                    #print(row[7].split('/')[-1])
+                                    write.write(row[0] + '\t' + row[4] + '-' + row[7].split('/')[-1]+'\n')  
+                            line=read.readline()
+                #delete unprocessed file
+                os.remove(path)
+        
+        super(AIDA_CONLL_EL, self).__init__(
+            data_folder,
+            train_file=corpus_file_name,
+            dev_file='testa',
+            test_file='testb',
+            in_memory=in_memory,
+            **corpusargs,
+        )
+        
+        
 class IITB_EL(EntityLinkingCorpus):
     def __init__(
             self,
