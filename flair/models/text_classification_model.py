@@ -573,7 +573,7 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
         for sen in sentences:
             spans = sen.get_spans('nel')
             for span in spans:
-                mention_emb = torch.Tensor(0,self.word_embeddings.embedding_length)
+                mention_emb = torch.Tensor(0,self.word_embeddings.embedding_length).to(flair.device)
 
                 for token in span.tokens:
                     mention_emb=torch.cat((mention_emb, token.get_embedding(embedding_names).unsqueeze(0)), 0)
@@ -866,6 +866,25 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             eval_loss /= batch_count
 
             return result, eval_loss
+        
+    def _get_state_dict(self):
+        model_state = super()._get_state_dict()
+        model_state["embedding_mode"] = self.embedding_mode
+        return model_state
+
+    @staticmethod
+    def _init_model_with_state_dict(state):
+        mode = 'average' if "embedding_mode" not in state.keys() else state["embedding_mode"]
+
+        model = EntityLinker(
+            word_embeddings=state["document_embeddings"],
+            label_dictionary=state["label_dictionary"],
+            embedding_mode=mode,
+        )
+
+        model.load_state_dict(state["state_dict"])
+        return model
+
 
 
 class TextPairClassifier(TextClassifier):
