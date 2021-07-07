@@ -516,30 +516,33 @@ class TextClassifier(flair.nn.Model):
                f'  (weight_tensor) {self.loss_weights}\n)'
                
 
-class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict function for not 'nel' labeled sentences, i.e. only entities marked e.g. with 'ner' tags!
+class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict function for not 'nel' labeled sentences, i.e. only entities marked e.g. with 'ner' tags!
     def __init__(
             self,
             word_embeddings: flair.embeddings.TokenEmbeddings,
             label_dictionary: Dictionary,
-            embedding_mode: str = 'average' #'first', 'last', 'firs&tlast'
+            embedding_mode: str = 'average', #'first', 'last', 'firs&tlast'
+            beta: float = 1.0,
     ):
+               
+        super(EntityLinker, self).__init__()
         
-        self.embedding_mode=embedding_mode
-        
-        super(EntityLinker, self).__init__(word_embeddings,
-                                         label_dictionary,
-                                         label_type='nel'
-                                         )
-        
-        self.word_embeddings = word_embeddings #the super class also saves these embeddings, as "self.document_embeddings"
+        self.word_embeddings = word_embeddings 
+        self.label_dictionary = label_dictionary
+        self.embedding_mode = embedding_mode
+        self.beta = beta
         
         #if we concatenate the embeddings we need double input size in our linear layer
         if self.embedding_mode == 'first&last':
             self.decoder = nn.Linear(
                     2 * self.word_embeddings.embedding_length, len(self.label_dictionary)
                 ).to(flair.device)
+        else:
+            self.decoder = nn.Linear(
+                    self.word_embeddings.embedding_length, len(self.label_dictionary)
+                ).to(flair.device)
     
-            nn.init.xavier_uniform_(self.decoder.weight)
+        nn.init.xavier_uniform_(self.decoder.weight)
             
         cases = {
             'average': self.emb_mean,
@@ -549,6 +552,10 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             }
         
         self.aggregated_embedding = cases.get(embedding_mode)
+        
+        self.loss_function = nn.CrossEntropyLoss()
+        
+        self.to(flair.device)
     
     def emb_first(self, arg):
         return arg[0]
@@ -613,6 +620,12 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             return self._calculate_loss(scores, data_points)
         else:
             return torch.Tensor([0]).requires_grad_()
+        
+    def _calculate_loss(self, scores, data_points):
+
+        labels = self._labels_to_indices(data_points)
+
+        return self.loss_function(scores, labels)
     
     def _labels_to_indices(self, sentences: List[Sentence]):
         
@@ -649,7 +662,7 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
         'gpu' to store embeddings in GPU memory.
         """
         if label_name == None:
-            label_name = self.label_type if self.label_type is not None else 'label'
+            label_name = 'label'
 
         with torch.no_grad():
             if not sentences:
@@ -723,8 +736,7 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
                         label_number+=1
                 
                 # clearing token embeddings to save memory
-                #TODO: Does this work properly??? NOOOOO: works on sentences!!!
-                #store_embeddings(batch, storage_mode=embedding_storage_mode)
+                store_embeddings(batch, storage_mode=embedding_storage_mode)
 
             if return_loss:
                 return overall_loss / batch_no
@@ -793,8 +805,7 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
                         y_true.append(self.label_dictionary.get_idx_for_item(annotation))
                         y_pred.append(self.label_dictionary.get_idx_for_item(prediction))
 
-                #TODO: Does work on sentences and not on tokens!!
-                #store_embeddings(batch, embedding_storage_mode)
+                store_embeddings(batch, embedding_storage_mode)
                 
             if out_path is not None:
                 with open(out_path, "w", encoding="utf-8") as outfile:
@@ -833,8 +844,8 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             accuracy_score = round(metrics.accuracy_score(y_true, y_pred), 4)
             macro_f_score = round(metrics.fbeta_score(y_true, y_pred, beta=self.beta, average='macro', zero_division=0),
                                   4)
-            precision_score = round(metrics.precision_score(y_true, y_pred, average='macro', zero_division=0), 4)
-            recall_score = round(metrics.recall_score(y_true, y_pred, average='macro', zero_division=0), 4)
+            #precision_score = round(metrics.precision_score(y_true, y_pred, average='macro', zero_division=0), 4)
+            #recall_score = round(metrics.recall_score(y_true, y_pred, average='macro', zero_division=0), 4)
 
             detailed_result = (
                     "\nResults:"
@@ -845,15 +856,9 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             )
 
             # line for log file
-            if not self.multi_label:
-                log_header = "ACCURACY"
-                log_line = f"\t{accuracy_score}"
-            else:
-                log_header = "PRECISION\tRECALL\tF1\tACCURACY"
-                log_line = f"{precision_score}\t" \
-                           f"{recall_score}\t" \
-                           f"{macro_f_score}\t" \
-                           f"{accuracy_score}"
+            log_header = "ACCURACY"
+            log_line = f"\t{accuracy_score}"
+
 
             result = Result(
                 main_score=classification_report_dict[main_score_type[0]][main_score_type[1]],
@@ -867,24 +872,60 @@ class EntityLinker(TextClassifier):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
 
             return result, eval_loss
         
+    def _obtain_labels(
+            self, scores: List[List[float]], predict_prob: bool = False
+    ) -> List[List[Label]]:
+        """
+        Predicts the labels of sentences.
+        :param scores: the prediction scores from the model
+        :return: list of predicted labels
+        """
+
+        if predict_prob:
+            return [self._predict_label_prob(s) for s in scores]
+
+        return [self._get_single_label(s) for s in scores]
+    
+    def _get_single_label(self, label_scores) -> List[Label]:
+        softmax = torch.nn.functional.softmax(label_scores, dim=0)
+        conf, idx = torch.max(softmax, 0)
+        label = self.label_dictionary.get_item_for_index(idx.item())
+
+        return [Label(label, conf.item())]
+
+    def _predict_label_prob(self, label_scores) -> List[Label]:
+        softmax = torch.nn.functional.softmax(label_scores, dim=0)
+        label_probs = []
+        for idx, conf in enumerate(softmax):
+            label = self.label_dictionary.get_item_for_index(idx)
+            label_probs.append(Label(label, conf.item()))
+        return label_probs
+        
     def _get_state_dict(self):
-        model_state = super()._get_state_dict()
-        model_state["embedding_mode"] = self.embedding_mode
+        model_state = {
+            "state_dict": self.state_dict(),
+            "word_embeddings": self.word_embeddings,
+            "label_dictionary": self.label_dictionary,
+            "embedding_mode": self.embedding_mode,
+            "beta": self.beta
+            }
         return model_state
 
     @staticmethod
     def _init_model_with_state_dict(state):
-        mode = 'average' if "embedding_mode" not in state.keys() else state["embedding_mode"]
-
         model = EntityLinker(
-            word_embeddings=state["document_embeddings"],
+            word_embeddings=state["word_embeddings"],
             label_dictionary=state["label_dictionary"],
-            embedding_mode=mode,
+            embedding_mode=state["embedding_mode"],
+            beta = state["beta"]
         )
 
         model.load_state_dict(state["state_dict"])
         return model
-
+    
+    def __str__(self):
+        return super(flair.nn.Model, self).__str__().rstrip(')') + \
+               f'  (beta): {self.beta}\n)' 
 
 
 class TextPairClassifier(TextClassifier):

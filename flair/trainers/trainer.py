@@ -32,7 +32,7 @@ from flair.training_utils import (
     AnnealOnPlateau,
 )
 from torch.optim.lr_scheduler import OneCycleLR
-from flair.models import SequenceTagger, TextClassifier
+from flair.models import SequenceTagger, TextClassifier, EntityLinker
 import random
 
 log = logging.getLogger("flair")
@@ -165,7 +165,7 @@ class ModelTrainer:
         :return:
         """
 
-        main_score_type = classification_main_metric if isinstance(self.model, TextClassifier) else None
+        main_score_type = classification_main_metric if (isinstance(self.model, TextClassifier) or isinstance(self.model, EntityLinker)) else None
 
         if self.use_tensorboard:
             try:
