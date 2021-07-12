@@ -10,6 +10,7 @@ import zipfile
 from zipfile import ZipFile
 import tarfile
 import csv
+import requests
 
 
 import flair
@@ -4303,19 +4304,22 @@ class EntityLinkingCorpus(ColumnCorpus):
         In entity_occurences all wikinames and their number of occurence is saved.
         ent_dictionary contains all wikinames that occure at least threshold times and gives each name an ID
         """
+        self.threshold = threshold
         self.entity_occurences = {}
-        self.total_number_of_annotations = 0
+        self.total_number_of_entity_mentions = 0
         for sentence in self.get_all_sentences():
             if not sentence.is_document_boundary:#exclude "-DOCSTART-"-sentences
             
                 spans = sentence.get_spans('nel')
                 for span in spans:
                     annotation = span.tag
-                    self.total_number_of_annotations+=1
+                    self.total_number_of_entity_mentions+=1
                     if annotation in self.entity_occurences:
                         self.entity_occurences[annotation]+=1
                     else:
                         self.entity_occurences[annotation]=1
+                        
+        self.number_of_entities = len(self.entity_occurences)
                         
         # Make the annotation dictionary
         self.ent_dictionary: Dictionary = Dictionary(add_unk=True)
@@ -4323,6 +4327,32 @@ class EntityLinkingCorpus(ColumnCorpus):
         for x in self.entity_occurences:
             if self.entity_occurences[x] >= threshold:
                 self.ent_dictionary.add_item(x)
+                
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        #additional statistics for analysis
+        self.distinct_occurences = set(self.entity_occurences.values())
+        self.how_often_each_occurence = {x : 0 for x in self.distinct_occurences}
+        
+        for x in self.entity_occurences:
+            self.how_often_each_occurence[self.entity_occurences[x]] +=1
+            
+        from collections import OrderedDict
+        self.how_often_each_occurence = OrderedDict(sorted(self.how_often_each_occurence.items()))
+        
+        entities_thrown_away = 0
+        entity_mentions_thrown_away = 0
+        for occ, how_often in self.how_often_each_occurence.items():
+            if occ < threshold:
+                entities_thrown_away += how_often
+                entity_mentions_thrown_away += occ*how_often
+                
+        print('Chosen threshold: {}\n'.format(threshold))
+        print('Number of entities: {}, Number of entities that appear less than threshold {} ({})\n'.format(self.number_of_entities, entities_thrown_away
+                                                                                                         , entities_thrown_away/self.number_of_entities))
+        print('Total number of entity mentions: {}, Mentions belonging to entities that appear less than threshold: {} ({})'.format(self.total_number_of_entity_mentions,
+                                                                                                                                     entity_mentions_thrown_away,
+                                                                                                                                     entity_mentions_thrown_away/self.total_number_of_entity_mentions))
+        #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         
         return self.ent_dictionary
 
@@ -4471,7 +4501,158 @@ class AQUAINT_EL(EntityLinkingCorpus):
             **corpusargs,
         )
         
+class OLD_GERMAN_EL(EntityLinkingCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            in_memory: bool = True,
+            wiki_language: str = 'dewiki',
+            **corpusargs            
+    ):
+        self.wiki_language = wiki_language
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+            
+        # this dataset name 
+        dataset_name = self.__class__.__name__.lower() 
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
         
+        dev_raw_url = "https://raw.githubusercontent.com/stefan-it/clef-hipe/main/data/future/dev-v1.2/de/HIPE-data-v1.2-dev-de-normalized-manual-eos.tsv"
+        test_raw_url = "https://raw.githubusercontent.com/stefan-it/clef-hipe/main/data/future/test-v1.3/de/HIPE-data-v1.3-test-de-normalized-manual-eos.tsv"
+        train_raw_url = "https://raw.githubusercontent.com/stefan-it/clef-hipe/main/data/future/training-v1.2/de/HIPE-data-v1.2-train-de-normalized-manual-eos.tsv"
+        train_file_name = wiki_language + "_train.tsv"
+        parsed_dataset = data_folder / train_file_name
+        
+        # download and parse data if necessary
+        if not parsed_dataset.exists():
+            
+            #from qwikidata.linked_data_interface import get_entity_dict_from_api
+            
+            original_train_path = cached_path(f"{train_raw_url}", Path("datasets") / dataset_name)
+            original_test_path = cached_path(f"{test_raw_url}", Path("datasets") / dataset_name)
+            original_dev_path = cached_path(f"{dev_raw_url}", Path("datasets") / dataset_name)
+                        
+            #generate qid wikiname dictionaries
+            print('Get wikinames from wikidata...')
+            train_dict = self._get_qid_wikiname_dict(path = original_train_path)
+            test_dict = self._get_qid_wikiname_dict(original_test_path)
+            dev_dict = self._get_qid_wikiname_dict(original_dev_path)
+            print('...done!')
+            
+            #merge dictionaries
+            qid_wikiname_dict = {**train_dict, **test_dict, **dev_dict}
+                            
+            for doc_path, file_name in zip([original_train_path, original_test_path, original_dev_path], [train_file_name, wiki_language + '_test.tsv', wiki_language + '_dev.tsv']):
+                with open(doc_path, 'r', encoding='utf-8') as read, open(data_folder / file_name, 'w', encoding='utf-8') as write:
+                                        
+                    #ignore first line
+                    read.readline()
+                    line = read.readline()
+                    last_eos = True
+                                     
+                    while line:
+                        #print(line)
+                        #commented and empty lines
+                        if line[0] == '#' or line == '\n':
+                            if line[2:13] == 'document_id':#beginning of new document
+                                
+                                if last_eos:
+                                    write.write('-DOCSTART-\n\n')
+                                    last_eos = False
+                                else:
+                                    write.write('\n-DOCSTART-\n\n')
+                            
+                        else: 
+                            line_list = line.split('\t')
+                            #print(line_list)
+                            if not line_list[7] in ['_', 'NIL']: #line has wikidata link
+                            
+                                wikiname = qid_wikiname_dict[line_list[7]]
+                                
+                                if wikiname != 'O':
+                                    annotation = line_list[1][:2] + wikiname
+                                else: #no entry in chosen language
+                                    annotation = 'O'
+                                
+                            else:
+                                
+                                annotation = 'O'
+                                
+                            write.write(line_list[0] + '\t' + annotation + '\n')
+
+                            if line_list[-1][-4:-1] == 'EOS': #end of sentence
+                                write.write('\n')
+                                last_eos = True
+                            else:
+                                last_eos = False
+                            
+                        line = read.readline()
+ 
+        super(OLD_GERMAN_EL, self).__init__(
+            data_folder,
+            train_file=train_file_name,
+            dev_file=wiki_language + '_dev.tsv',
+            test_file=wiki_language + '_test.tsv',
+            in_memory=in_memory,
+            **corpusargs,
+        )
+    
+    def _get_qid_wikiname_dict(self, path):
+        
+        qid_set = set()
+        with open(path, mode='r',encoding='utf-8') as read:
+            #read all Q-IDs
+            
+            #ignore first line
+            read.readline()
+            line = read.readline()
+                             
+            while line:
+        
+                if not (line[0] == '#' or line == '\n'): #commented or empty lines
+                    line_list = line.split('\t')
+                    #print(line_list)
+                    if not line_list[7] in ['_', 'NIL']: #line has wikidata link
+                    
+                        qid_set.add(line_list[7])
+                        
+                line = read.readline()
+         
+        base_url = 'https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&props=sitelinks&sitefilter=' + self.wiki_language + '&ids='
+        
+        qid_list = list(qid_set)
+        ids = ''
+        length = len(qid_list)
+        qid_wikiname_dict = {}
+        for i in range(length):
+            if  (i + 1) % 50  == 0 or i == length-1:#there is a limit to the number of ids in one request in the wikidata api
+        
+                ids += qid_list[i]
+                #request
+                response_json = requests.get(base_url + ids).json()
+        
+                for qid in response_json['entities']:
+        
+                    try:
+                        wikiname = response_json['entities'][qid]['sitelinks'][self.wiki_language]['title'].replace(' ','_')      
+                    except KeyError:#language not available for specific wikiitem
+                        wikiname = 'O'
+                    
+                    qid_wikiname_dict[qid] = wikiname
+                
+                ids = ''
+        
+            else:
+                ids += qid_list[i]
+                ids+='|'
+                
+        return qid_wikiname_dict
+                
+                
 class AIDA_CONLL_EL(EntityLinkingCorpus):
     def __init__(
             self,

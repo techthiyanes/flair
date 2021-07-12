@@ -17,7 +17,7 @@ from flair.data import Dictionary, Sentence, Label, DataPoint, DataPair
 from flair.datasets import SentenceDataset, DataLoader
 from flair.file_utils import cached_path
 from flair.training_utils import convert_labels_to_one_hot, Result, store_embeddings
-
+from flair.datasets import EntityLinkingCorpus
 log = logging.getLogger("flair")
 
 
@@ -521,7 +521,7 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             self,
             word_embeddings: flair.embeddings.TokenEmbeddings,
             label_dictionary: Dictionary,
-            embedding_mode: str = 'average', #'first', 'last', 'firs&tlast'
+            embedding_mode: str = 'average', #'first', 'last', 'first&tlast'
             beta: float = 1.0,
     ):
                
@@ -550,6 +550,9 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             'last': self.emb_last,
             'first&last': self.emb_firstAndLast
             }
+        
+        if embedding_mode not in cases:
+            raise KeyError('embedding_mode has to be one of "average", "first", "last" or "first&last"')
         
         self.aggregated_embedding = cases.get(embedding_mode)
         
@@ -581,9 +584,12 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             spans = sen.get_spans('nel')
             for span in spans:
                 mention_emb = torch.Tensor(0,self.word_embeddings.embedding_length).to(flair.device)
+                
+                print(mention_emb.shape)
 
                 for token in span.tokens:
                     mention_emb=torch.cat((mention_emb, token.get_embedding(embedding_names).unsqueeze(0)), 0)
+                    print(mention_emb.shape)
                      
                 embedding_list.append(self.aggregated_embedding(mention_emb).unsqueeze(0))
 
@@ -594,7 +600,7 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
         else: 
             label_scores = None
 
-        return label_scores
+        return label_scores, embedding_list
     
     def _forward_scores_and_loss(self, data_points: Union[List[Sentence], Sentence], return_loss=False):
         
@@ -633,6 +639,7 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
         for sen in sentences:
             spans = sen.get_spans('nel')
             for span in spans:
+                #note that all annotations that do not appear in label_dictionary are set to unknown
                 indices.append(self.label_dictionary.get_idx_for_item(span.tag))        
                     
         vec = torch.LongTensor(indices).to(flair.device)
@@ -871,6 +878,109 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             eval_loss /= batch_count
 
             return result, eval_loss
+        
+    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #additional evaluation function for our research
+    def new_evaluate(
+            self,
+            entity_linking_corpus: EntityLinkingCorpus, #from the corpus we take the statistics on entity occurences etc.
+            out_path: Union[str, Path] = None,
+            sentences_in_out_file = True, #write sentences in out file or not
+            embedding_storage_mode: str = "none",
+            mini_batch_size: int = 32,
+            num_workers: int = 8,
+            main_score_type: Tuple[str, str]=("macro avg", 'f1-score'),
+            return_predictions: bool = False
+    ) -> (Result, float):
+        
+        #TODO: Different ways to handle '<unk>'-> see chat with Alan
+        #TODO: How good is classification w.r.t. number of occurences of an entity mention corresponding to specific entity
+               
+        sentences = entity_linking_corpus.test
+        # read Dataset into data loader (if list of sentences passed, make Dataset first)
+        if not isinstance(sentences, Dataset):
+            print('WHAT?')
+            sentences = SentenceDataset(sentences)
+        data_loader = DataLoader(sentences, batch_size=mini_batch_size, num_workers=num_workers)
+
+        # use scikit-learn to evaluate
+        y_true = []
+        y_pred = []
+
+        with torch.no_grad():
+            eval_loss = 0
+
+
+            lines: List[str] = []
+            batch_count: int = 0
+            
+            by_occurences = { i:([],[]) for i in entity_linking_corpus.distinct_occurences}
+
+            for batch in data_loader:
+                batch_count += 1
+                
+                for sentence in batch:
+                    for token in sentence:
+                        token.remove_labels('predicted')
+                        
+                        
+                # predict for batch
+                loss = self.predict(batch,
+                                    embedding_storage_mode=embedding_storage_mode,
+                                    mini_batch_size=mini_batch_size,
+                                    label_name='predicted',
+                                    return_loss=True)
+                
+                eval_loss += loss
+                                        
+                #get the predicted and gold labels
+                for sen in batch:
+                    spans_predicted = sen.get_spans('predicted')
+                    spans_gold = sen.get_spans('nel')
+                    for span_predicted,span_gold in zip(spans_predicted, spans_gold):
+                        
+                        entity_mention = span_predicted.to_original_text()
+                        gold_annotation = span_gold.tag
+                        prediction = span_predicted.tag
+                        
+                        if sentences_in_out_file:
+                            eval_line= "{}\tsurface form: {}\t wikiname: {}\tprediction: {}\n".format(sen.to_plain_string(), entity_mention, gold_annotation, prediction)
+                        else:
+                            eval_line= "surface form: {}\t wikiname: {}\tprediction: {}\n".format(entity_mention, gold_annotation, prediction)
+                        lines.append(eval_line)
+                        
+                        
+                        y_true.append(self.label_dictionary.get_idx_for_item(gold_annotation))
+                        y_pred.append(self.label_dictionary.get_idx_for_item(prediction))
+                        
+                        #append also w.r.t. to occurence
+                        #get number of occurences of gold_annotation
+                        occurences_of_true_entity=entity_linking_corpus.entity_occurences[gold_annotation]
+                        #append gold label and corresponding prediction w.r.t. occurence
+                        by_occurences[occurences_of_true_entity][0].append(self.label_dictionary.get_idx_for_item(gold_annotation))
+                        by_occurences[occurences_of_true_entity][1].append(self.label_dictionary.get_idx_for_item(prediction))
+
+                store_embeddings(batch, embedding_storage_mode)
+                
+            if out_path is not None:
+                with open(out_path, "w", encoding="utf-8") as outfile:
+                    outfile.write("".join(lines))
+                    
+                    
+            #How many <unk> are there, i.e. how often does a entity mention occur that corresponds to an entity not in the label_dictionary (because appears less than threshold)
+            #This is the only way <unk> can occur since we assume for now that we do not have NIL/NONE annotations
+            print("#of <unk> 'in' data: {}".format(y_true.count(0)))
+            print("#of predicted <unk>: {}".format(y_pred.count(0)))
+            
+            #print(by_occurences)
+            
+            return by_occurences
+    
+            #How good is linker w.r.t. to occurences of entity mentions corresponding to specific entity??
+            #Here we use the EntityLinkingCorpus
+            
+    
+    #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         
     def _obtain_labels(
             self, scores: List[List[float]], predict_prob: bool = False
