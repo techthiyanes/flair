@@ -585,22 +585,20 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             for span in spans:
                 mention_emb = torch.Tensor(0,self.word_embeddings.embedding_length).to(flair.device)
                 
-                print(mention_emb.shape)
-
                 for token in span.tokens:
                     mention_emb=torch.cat((mention_emb, token.get_embedding(embedding_names).unsqueeze(0)), 0)
-                    print(mention_emb.shape)
                      
                 embedding_list.append(self.aggregated_embedding(mention_emb).unsqueeze(0))
 
         if len(embedding_list) > 0:
             embedding_tensor = torch.cat(embedding_list, 0).to(flair.device)
+
             label_scores = self.decoder(embedding_tensor)
         #No entity mention in given sentences, return None
         else: 
             label_scores = None
 
-        return label_scores, embedding_list
+        return label_scores
     
     def _forward_scores_and_loss(self, data_points: Union[List[Sentence], Sentence], return_loss=False):
         
@@ -608,6 +606,7 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
         
         loss = None
         if return_loss:
+
             if scores != None:  #no annotations (no entity mentions) in given (list of) sentences 
                 loss = self._calculate_loss(scores, data_points)
             else:
@@ -711,7 +710,7 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
                 # stop if all sentences are empty
                 if not batch:
                     continue
-
+                
                 scores, loss = self._forward_scores_and_loss(batch, return_loss)
                 
                 if scores==None:#no entity mentions in batch
@@ -834,10 +833,9 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             # make "classification report"
         
             #indices contains ID's of those entities that appear in either the gold or predicted labels
-            #note that set automatically sorts them increasingly, which we need for classification_report to work properly
             indices = set(y_true+y_pred) 
             target_names = []
-            for i in indices:
+            for i in sorted(indices): #target_names need same order as indices
                 target_names.append(self.label_dictionary.get_item_for_index(i))
             
             classification_report = metrics.classification_report(y_true, y_pred, digits=4,
@@ -898,8 +896,8 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
                
         sentences = entity_linking_corpus.test
         # read Dataset into data loader (if list of sentences passed, make Dataset first)
+
         if not isinstance(sentences, Dataset):
-            print('WHAT?')
             sentences = SentenceDataset(sentences)
         data_loader = DataLoader(sentences, batch_size=mini_batch_size, num_workers=num_workers)
 
@@ -923,7 +921,6 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
                     for token in sentence:
                         token.remove_labels('predicted')
                         
-                        
                 # predict for batch
                 loss = self.predict(batch,
                                     embedding_storage_mode=embedding_storage_mode,
@@ -932,6 +929,7 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
                                     return_loss=True)
                 
                 eval_loss += loss
+                
                                         
                 #get the predicted and gold labels
                 for sen in batch:
@@ -974,7 +972,7 @@ class EntityLinker(flair.nn.Model):#TODO!!!!!!!!!!!!!!!!!!!!!!!! predict functio
             
             #print(by_occurences)
             
-            return by_occurences
+            return by_occurences, (y_true, y_pred)
     
             #How good is linker w.r.t. to occurences of entity mentions corresponding to specific entity??
             #Here we use the EntityLinkingCorpus
