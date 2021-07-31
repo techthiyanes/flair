@@ -570,7 +570,7 @@ def test_tagged_corpus_make_vocab_dictionary():
 def test_label_set_confidence():
     label = Label("class_1", 3.2)
 
-    assert 1.0 == label.score
+    assert 3.2 == label.score
     assert "class_1" == label.value
 
     label.score = 0.2
@@ -702,6 +702,22 @@ def test_tagged_corpus_downsample():
     corpus.downsample(percentage=0.3, downsample_dev=False, downsample_test=False)
 
     assert 3 == len(corpus.train)
+
+
+def test_classification_corpus_multi_labels_without_negative_examples(tasks_base_path):
+    corpus = flair.datasets.ClassificationCorpus(tasks_base_path / "multi_class_negative_examples",
+                                                 allow_examples_without_labels=False)
+    assert len(corpus.train) == 7
+    assert len(corpus.dev) == 4
+    assert len(corpus.test) == 5
+
+
+def test_classification_corpus_multi_labels_with_negative_examples(tasks_base_path):
+    corpus = flair.datasets.ClassificationCorpus(tasks_base_path / "multi_class_negative_examples",
+                                                 allow_examples_without_labels=True)
+    assert len(corpus.train) == 8
+    assert len(corpus.dev) == 5
+    assert len(corpus.test) == 6
 
 
 def test_spans():
@@ -879,3 +895,23 @@ def test_pretokenized():
     sent = Sentence(pretoks)
     for i, token in enumerate(sent):
         assert token.text == pretoks[i]
+
+
+@pytest.fixture
+def sentence_with_relations():
+    # city single-token, person and company multi-token
+    sentence = Sentence("Person A , born in city , works for company B .")
+
+    sentence[0].add_tag("ner", "B-Peop")
+    sentence[1].add_tag("ner", "I-Peop")
+    sentence[1].add_tag("relation", "['Born_In', 'Works_For']")
+    sentence[1].add_tag("relation_dep", "[5, 10]")
+    sentence[5].add_tag("ner", "B-Loc")
+    sentence[9].add_tag("ner", "B-Org")
+    sentence[10].add_tag("ner", "I-Org")
+    for i in range(len(sentence)):
+        if i != 1:
+            sentence[i].add_tag("relation", "['N']")
+            sentence[i].add_tag("relation_dep", f"[{i}]")
+
+    return sentence

@@ -2,8 +2,14 @@ import logging
 import re
 import os
 import shutil
+import glob
 from pathlib import Path
 from typing import Union, Dict, List
+from os import listdir
+import zipfile
+from zipfile import ZipFile
+import tarfile
+import csv
 
 import flair
 from flair.data import Corpus, MultiCorpus, FlairDataset, Sentence, Token
@@ -29,6 +35,7 @@ class ColumnCorpus(Corpus):
             skip_first_line: bool = False,
             in_memory: bool = True,
             label_name_map: Dict[str, str] = None,
+            banned_sentences: List[str] = None,
             autofind_splits: bool = True,
             **corpusargs,
     ):
@@ -46,8 +53,9 @@ class ColumnCorpus(Corpus):
         :param document_separator_token: If provided, sentences that function as document boundaries are so marked
         :param skip_first_line: set to True if your dataset has a header line
         :param in_memory: If set to True, the dataset is kept in memory as Sentence objects, otherwise does disk reads
-        :return: a Corpus with annotated train, dev and test data
         :param label_name_map: Optionally map tag names to different schema.
+        :param banned_sentences: Optionally remove sentences from the corpus. Works only if `in_memory` is true
+        :return: a Corpus with annotated train, dev and test data
         """
 
         # find train, dev and test files if not specified
@@ -62,6 +70,7 @@ class ColumnCorpus(Corpus):
             encoding=encoding,
             comment_symbol=comment_symbol,
             column_delimiter=column_delimiter,
+            banned_sentences=banned_sentences,
             in_memory=in_memory,
             document_separator_token=document_separator_token,
             skip_first_line=skip_first_line,
@@ -76,6 +85,7 @@ class ColumnCorpus(Corpus):
             encoding=encoding,
             comment_symbol=comment_symbol,
             column_delimiter=column_delimiter,
+            banned_sentences=banned_sentences,
             in_memory=in_memory,
             document_separator_token=document_separator_token,
             skip_first_line=skip_first_line,
@@ -89,6 +99,7 @@ class ColumnCorpus(Corpus):
             tag_to_bioes,
             encoding=encoding,
             comment_symbol=comment_symbol,
+            banned_sentences=banned_sentences,
             column_delimiter=column_delimiter,
             in_memory=in_memory,
             document_separator_token=document_separator_token,
@@ -110,6 +121,7 @@ class ColumnDataset(FlairDataset):
             tag_to_bioes: str = None,
             column_delimiter: str = r"\s+",
             comment_symbol: str = None,
+            banned_sentences: List[str] = None,
             in_memory: bool = True,
             document_separator_token: str = None,
             encoding: str = "utf-8",
@@ -128,6 +140,8 @@ class ColumnDataset(FlairDataset):
         :param document_separator_token: If provided, sentences that function as document boundaries are so marked
         :param skip_first_line: set to True if your dataset has a header line
         :param label_name_map: Optionally map tag names to different schema.
+        :param banned_sentences: Optionally remove sentences from the corpus. Works only if `in_memory` is true
+        :return: a dataset with annotated data
         """
         if type(path_to_column_file) is str:
             path_to_column_file = Path(path_to_column_file)
@@ -139,6 +153,7 @@ class ColumnDataset(FlairDataset):
         self.comment_symbol = comment_symbol
         self.document_separator_token = document_separator_token
         self.label_name_map = label_name_map
+        self.banned_sentences = banned_sentences
 
         # store either Sentence objects in memory, or only file offsets
         self.in_memory = in_memory
@@ -191,6 +206,9 @@ class ColumnDataset(FlairDataset):
                 while True:
                     sentence = self._convert_lines_to_sentence(self._read_next_sentence(file))
                     if not sentence: break
+                    if self.banned_sentences is not None and any(
+                            [d in sentence.to_plain_string() for d in self.banned_sentences]):
+                        continue
                     sentence._previous_sentence = previous_sentence
                     sentence._next_sentence = None
 
@@ -263,12 +281,13 @@ class ColumnDataset(FlairDataset):
                         tagging_format_prefix = split_at_first_hyphen[0]
                         tag_without_tagging_format = split_at_first_hyphen[1]
                         if self.label_name_map and tag_without_tagging_format in self.label_name_map.keys():
-                            tag = tagging_format_prefix + "-" + self.label_name_map[tag_without_tagging_format].replace(
-                                "-", " ")  # for example, transforming 'B-OBJ' to 'B-part-of-speech-object'
+                            tag = tagging_format_prefix + "-" + self.label_name_map[tag_without_tagging_format]
+                            # for example, transforming 'B-OBJ' to 'B-part-of-speech-object'
+                            if self.label_name_map[tag_without_tagging_format] == 'O': tag = 'O'
                     else:  # tag without prefix, for example tag='PPER'
                         if self.label_name_map and tag in self.label_name_map.keys():
-                            tag = self.label_name_map[tag].replace("-",
-                                                                   " ")  # for example, transforming 'PPER' to 'person'
+                            tag = self.label_name_map[tag]  # for example, transforming 'PPER' to 'person'
+
                     token.add_label(task, tag)
                 if self.column_name_map[column] == self.SPACE_AFTER_KEY and fields[column] == '-':
                     token.whitespace_after = False
@@ -302,20 +321,16 @@ class ColumnDataset(FlairDataset):
         return sentence
 
 
-class ANER_CORP(ColumnCorpus):
+class AMHARIC_NER(ColumnCorpus):
     def __init__(
             self,
             base_path: Union[str, Path] = None,
             tag_to_bioes: str = "ner",
             in_memory: bool = True,
-            document_as_sequence: bool = False,
             **corpusargs,
     ):
         """
-        Initialize a preprocessed version of the Arabic Named Entity Recognition Corpus (ANERCorp) dataset available
-        from https://github.com/EmnamoR/Arabic-named-entity-recognition/blob/master/ANERCorp.rar.
-        http://curtis.ml.cmu.edu/w/courses/index.php/ANERcorp
-        Column order is swapped
+        Initialize the Amharic corpus available on https://github.com/masakhane-io/masakhane-ner/tree/main/data/amh/.
         The first time you call this constructor it will automatically download the dataset.
         :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
         to point to a different folder but typically this should not be necessary.
@@ -335,7 +350,58 @@ class ANER_CORP(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        ner_amharic_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/amh/"
+        cached_path(f"{ner_amharic_path}dev.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_amharic_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_amharic_path}train.txt", Path("datasets") / dataset_name)
+
+        super(AMHARIC_NER, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            encoding="utf-8",
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class ANER_CORP(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            document_as_sequence: bool = False,
+            **corpusargs,
+    ):
+        """
+        Initialize a preprocessed version of the Arabic Named Entity Recognition Corpus (ANERCorp) dataset available
+        from https://github.com/EmnamoR/Arabic-named-entity-recognition/blob/master/ANERCorp.rar.
+        http://curtis.ml.cmu.edu/w/courses/index.php/ANERcorp
+        Column order is swapped
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed.
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -344,6 +410,65 @@ class ANER_CORP(ColumnCorpus):
         cached_path(f"{anercorp_path}train.txt", Path("datasets") / dataset_name)
 
         super(ANER_CORP, self).__init__(
+            data_folder,
+            columns,
+            # tag_to_bioes=tag_to_bioes,
+            encoding="utf-8",
+            in_memory=in_memory,
+            document_separator_token=None if not document_as_sequence else "-DOCSTART-",
+            **corpusargs,
+        )
+
+
+class AQMAR(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            document_as_sequence: bool = False,
+            **corpusargs,
+    ):
+        """
+        Initialize a preprocessed  and modified version of the American and Qatari Modeling of Arabic (AQMAR) dataset available
+        from http://www.cs.cmu.edu/~ark/ArabicNER/AQMAR_Arabic_NER_corpus-1.0.zip.
+        via http://www.cs.cmu.edu/~ark/AQMAR/
+
+        - Modifications from original dataset: Miscellaneous tags (MIS0, MIS1, MIS2, MIS3) are merged to one tag "MISC" as these categories deviate across the original dataset
+        - The 28 original Wikipedia articles are merged into a single file containing the articles in alphabetical order
+
+        The first time you call this constructor it will automatically download the dataset.
+
+        This dataset is licensed under a Creative Commons Attribution-ShareAlike 3.0 Unported License.
+        please cite: "Behrang Mohit, Nathan Schneider, Rishav Bhowmick, Kemal Oflazer, and Noah A. Smith (2012),
+        Recall-Oriented Learning of Named Entities in Arabic Wikipedia. Proceedings of EACL."
+
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        aqmar_path = "https://megantosh.s3.eu-central-1.amazonaws.com/AQMAR/"
+        # cached_path(f"{anercorp_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{aqmar_path}train.txt", Path("datasets") / dataset_name)
+
+        super(AQMAR, self).__init__(
             data_folder,
             columns,
             # tag_to_bioes=tag_to_bioes,
@@ -373,7 +498,7 @@ class BIOFID(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -405,7 +530,7 @@ class BIOSCOPE(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -422,6 +547,7 @@ class CONLL_03(ColumnCorpus):
             self,
             base_path: Union[str, Path] = None,
             tag_to_bioes: str = "ner",
+            entity_linking: bool = False,
             in_memory: bool = True,
             **corpusargs,
     ):
@@ -430,6 +556,7 @@ class CONLL_03(ColumnCorpus):
         Obtain the corpus from https://www.clips.uantwerpen.be/conll2003/ner/ and put the eng.testa, .testb, .train
         files in a folder called 'conll_03'. Then set the base_path parameter in the constructor to the path to the
         parent directory where the conll_03 folder resides.
+        If using entity linking, the conll03 dateset is reduced by about 20 Documents, which are not part of the yago dataset.
         :param base_path: Path to the CoNLL-03 corpus (i.e. 'conll_03' folder) on your machine
         :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' or 'np' to predict
         POS tags or chunks respectively
@@ -440,15 +567,29 @@ class CONLL_03(ColumnCorpus):
             base_path: Path = Path(base_path)
 
         # column format
-        columns = {0: "text", 1: "pos", 2: "np", 3: "ner"}
+        if not entity_linking:
+            columns = {0: "text", 1: "pos", 2: "np", 3: "ner"}
+        else:
+            columns = {0: "text", 1: "pos", 2: "np", 3: "ner", 4: 'tmp', 5: 'entity', 6: 'normalised entity', 7: 'link',
+                       8: 'tmp_nr', 9: 'tmpLink'}
 
         # this dataset name
-        dataset_name = self.__class__.__name__.lower()
+        if entity_linking:
+            dataset_name = self.__class__.__name__.lower() + "-yago-reduced"
+        else:
+            dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
+
+        if entity_linking:
+            print('Test')
+            conll_yago_path = "https://nlp.informatik.hu-berlin.de/resources/datasets/conll_entity_linking/"
+            cached_path(f"{conll_yago_path}combinedENG.testa", Path("datasets") / dataset_name)
+            cached_path(f"{conll_yago_path}combinedENG.testb", Path("datasets") / dataset_name)
+            cached_path(f"{conll_yago_path}combinedENG.train", Path("datasets") / dataset_name)
 
         # check if data there
         if not data_folder.exists():
@@ -459,14 +600,25 @@ class CONLL_03(ColumnCorpus):
             )
             log.warning("-" * 100)
 
-        super(CONLL_03, self).__init__(
-            data_folder,
-            columns,
-            tag_to_bioes=tag_to_bioes,
-            in_memory=in_memory,
-            document_separator_token="-DOCSTART-",
-            **corpusargs,
-        )
+        if entity_linking:
+            super(CONLL_03, self).__init__(
+                data_folder,
+                columns,
+                tag_to_bioes=tag_to_bioes,
+                column_delimiter='\t',
+                in_memory=in_memory,
+                document_separator_token="-DOCSTART-",
+                **corpusargs,
+            )
+        else:
+            super(CONLL_03, self).__init__(
+                data_folder,
+                columns,
+                tag_to_bioes=tag_to_bioes,
+                in_memory=in_memory,
+                document_separator_token="-DOCSTART-",
+                **corpusargs,
+            )
 
 
 class CONLL_03_GERMAN(ColumnCorpus):
@@ -499,7 +651,7 @@ class CONLL_03_GERMAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # check if data there
@@ -550,7 +702,7 @@ class CONLL_03_DUTCH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -592,6 +744,277 @@ class CONLL_03_DUTCH(ColumnCorpus):
                     f.write("\n")
 
 
+class PERSON_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+    ):
+        """
+        Initialize the PERSON_NER corpus for person names. The first time you call this constructor it will automatically
+        download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        conll_path = "https://raw.githubusercontent.com/das-sudeshna/genid/master/"
+
+        # download files if not present locallys
+        cached_path(f"{conll_path}conll-g.conll", data_folder / 'raw')
+        cached_path(f"{conll_path}ieer-g.conll", data_folder / 'raw')
+        cached_path(f"{conll_path}textbook-g.conll", data_folder / 'raw')
+        cached_path(f"{conll_path}wiki-g.conll", data_folder / 'raw')
+
+        self.__concatAllFiles(data_folder)
+
+        super(PERSON_NER, self).__init__(
+            data_folder,
+            columns,
+            in_memory=in_memory,
+            train_file='bigFile.conll'
+        )
+
+    @staticmethod
+    def __concatAllFiles(data_folder):
+        arr = os.listdir(data_folder / 'raw')
+
+        with open(data_folder / 'bigFile.conll', 'w') as outfile:
+            for fname in arr:
+                with open(data_folder / 'raw' / fname) as infile:
+                    outfile.write(infile.read())
+
+
+class ICELANDIC_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the ICELANDIC_NER corpus. The first time you call this constructor it will automatically
+        download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        if not os.path.isfile(data_folder / 'icelandic_ner.txt'):
+            # download zip
+            icelandic_ner = "https://repository.clarin.is/repository/xmlui/handle/20.500.12537/42/allzip"
+            icelandic_ner_path = cached_path(icelandic_ner, Path("datasets") / dataset_name)
+
+            # unpacking the zip
+            unpack_file(
+                icelandic_ner_path,
+                data_folder,
+                mode="zip",
+                keep=True
+            )
+        outputfile = os.path.abspath(data_folder)
+
+        # merge the files in one as the zip is containing multiples files
+
+        with open(outputfile / data_folder / "icelandic_ner.txt", "wb") as outfile:
+            for files in os.walk(outputfile / data_folder):
+                f = files[2]
+
+                for i in range(len(f)):
+                    if f[i].endswith('.txt'):
+                        with open(outputfile / data_folder / f[i], 'rb') as infile:
+                            contents = infile.read()
+                        outfile.write(contents)
+
+        super(ICELANDIC_NER, self).__init__(
+            data_folder,
+            columns,
+            train_file='icelandic_ner.txt',
+            tag_to_bioes=tag_to_bioes,
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class WEBPAGES_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the WEBPAGES_NER corpus. The first time you call this constructor it will automatically
+        download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "ner", 5: "text"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = Path(flair.cache_root) / "datasets"
+        data_folder = base_path / dataset_name
+        import tarfile
+        if not os.path.isfile(data_folder / 'webpages_ner.txt'):
+            #     # download zip
+            tar_file = "https://cogcomp.seas.upenn.edu/Data/NERWebpagesColumns.tgz"
+            webpages_ner_path = cached_path(tar_file, Path("datasets") / dataset_name)
+            tf = tarfile.open(webpages_ner_path)
+            tf.extractall(data_folder)
+            tf.close()
+        outputfile = os.path.abspath(data_folder)
+
+        # merge the files in one as the zip is containing multiples files
+
+        with open(outputfile / data_folder / "webpages_ner.txt", "w+") as outfile:
+            for files in os.walk(outputfile):
+                f = files[1]
+                ff = os.listdir(outputfile / data_folder / f[-1])
+                for i, file in enumerate(ff):
+                    if file.endswith('.gold'):
+                        with open(outputfile / data_folder / f[-1] / file, 'r+', errors='replace') as infile:
+                            content = infile.read()
+                        outfile.write(content)
+                break
+
+        super(WEBPAGES_NER, self).__init__(
+            data_folder,
+            columns,
+            train_file='webpages_ner.txt',
+            tag_to_bioes=tag_to_bioes,
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class JAPANESE_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the Hironsan/IOB2 corpus for Japanese. The first time you call this constructor it will automatically
+        download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default.
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: 'text', 1: 'ner'}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data from github if necessary (hironsan.txt, ja.wikipedia.conll)
+        IOB2_path = "https://raw.githubusercontent.com/Hironsan/IOB2Corpus/master/"
+
+        # download files if not present locally
+        cached_path(f"{IOB2_path}hironsan.txt", data_folder / 'raw')
+        cached_path(f"{IOB2_path}ja.wikipedia.conll", data_folder / 'raw')
+
+        # we need to modify the original files by adding new lines after after the end of each sentence
+        train_data_file = data_folder / 'train.txt'
+        if not train_data_file.is_file():
+            self.__prepare_jap_wikinews_corpus(data_folder / 'raw' / "hironsan.txt", data_folder / 'train.txt')
+            self.__prepare_jap_wikipedia_corpus(data_folder / 'raw' / "ja.wikipedia.conll", data_folder / 'train.txt')
+
+        super(JAPANESE_NER, self).__init__(
+            data_folder,
+            columns,
+            train_file='train.txt',
+            tag_to_bioes=tag_to_bioes,
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+    @staticmethod
+    def __prepare_jap_wikipedia_corpus(file_in: Union[str, Path], file_out: Union[str, Path]):
+        with open(file_in, 'r') as f:
+            lines = f.readlines()
+        with open(file_out, 'a') as f:
+            for line in lines:
+                if (line[0] == "。"):
+                    f.write(line)
+                    f.write("\n")
+                elif (line[0] == "\n"):
+                    continue
+                else:
+                    f.write(line)
+
+    @staticmethod
+    def __prepare_jap_wikinews_corpus(file_in: Union[str, Path], file_out: Union[str, Path]):
+        with open(file_in, 'r') as f:
+            lines = f.readlines()
+        with open(file_out, 'a') as f:
+            for line in lines:
+                sp_line = line.split("\t")
+                if (sp_line[0] == "\n"):
+                    f.write("\n")
+                else:
+                    f.write(sp_line[0] + "\t" + sp_line[len(sp_line) - 1])
+
+
 class STACKOVERFLOW_NER(ColumnCorpus):
     def __init__(
             self,
@@ -624,31 +1047,67 @@ class STACKOVERFLOW_NER(ColumnCorpus):
         # column format
         columns = {0: "word", 1: "ner", 3: "markdown"}
 
+        # entity_mapping
+        entity_mapping = {"Library_Function": "Function",
+                          "Function_Name": "Function",
+                          "Class_Name": "Class",
+                          "Library_Class": "Class",
+                          "Organization": "Website",
+                          "Library_Variable": "Variable",
+                          "Variable_Name": "Variable",
+                          "Error_Name": "O",
+                          "Keyboard_IP": "O",
+                          "Value": "O",
+                          "Output_Block": "O"
+                          }
+
         # this dataset name
         dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
         STACKOVERFLOW_NER_path = "https://raw.githubusercontent.com/jeniyat/StackOverflowNER/master/resources/annotated_ner_data/StackOverflow/"
-        cached_path(f"{STACKOVERFLOW_NER_path}train.txt", Path("datasets") / dataset_name)
-        cached_path(f"{STACKOVERFLOW_NER_path}test.txt", Path("datasets") / dataset_name)
-        cached_path(f"{STACKOVERFLOW_NER_path}dev.txt", Path("datasets") / dataset_name)
-        # cached_path(f"{STACKOVERFLOW_NER_path}train_merged_labels.txt", Path("datasets") / dataset_name) # TODO: what is this?
+
+        # data validation
+        banned_sentences = ["code omitted for annotation",
+                            "omitted for annotation",
+                            "CODE_BLOCK :",
+                            "OP_BLOCK :",
+                            "Question_URL :",
+                            "Question_ID :"
+                            ]
+
+        files = ["train", "test", "dev"]
+
+        for file in files:
+            questions = 0
+            answers = 0
+
+            cached_path(f"{STACKOVERFLOW_NER_path}{file}.txt", Path("datasets") / dataset_name)
+            for line in open(data_folder / (file + ".txt"), mode="r", encoding="utf-8"):
+                if line.startswith("Question_ID"):
+                    questions += 1
+
+                if line.startswith("Answer_to_Question_ID"):
+                    answers += 1
+            log.info(f"File {file} has {questions} questions and {answers} answers.")
 
         super(STACKOVERFLOW_NER, self).__init__(
             data_folder,
             columns,
-            tag_to_bioes=tag_to_bioes,
-            encoding="utf-8",
-            in_memory=in_memory,
             train_file="train.txt",
             test_file="test.txt",
             dev_file="dev.txt",
-            **corpusargs,
+            tag_to_bioes=tag_to_bioes,
+            encoding="utf-8",
+            banned_sentences=banned_sentences,
+            in_memory=in_memory,
+            label_name_map=entity_mapping,
+            **corpusargs
         )
 
 
@@ -682,7 +1141,7 @@ class BUSINESS_HUN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # If the extracted corpus file is not yet present in dir
@@ -844,7 +1303,7 @@ class CONLL_03_SPANISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -890,12 +1349,12 @@ class CONLL_2000(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
         conll_2000_path = "https://www.clips.uantwerpen.be/conll2000/chunking/"
-        data_file = Path(flair.cache_root) / "datasets" / dataset_name / "train.txt"
+        data_file = flair.cache_root / "datasets" / dataset_name / "train.txt"
         if not data_file.is_file():
             cached_path(
                 f"{conll_2000_path}train.txt.gz", Path("datasets") / dataset_name
@@ -906,19 +1365,19 @@ class CONLL_2000(ColumnCorpus):
             import gzip, shutil
 
             with gzip.open(
-                    Path(flair.cache_root) / "datasets" / dataset_name / "train.txt.gz",
+                    flair.cache_root / "datasets" / dataset_name / "train.txt.gz",
                     "rb",
             ) as f_in:
                 with open(
-                        Path(flair.cache_root) / "datasets" / dataset_name / "train.txt",
+                        flair.cache_root / "datasets" / dataset_name / "train.txt",
                         "wb",
                 ) as f_out:
                     shutil.copyfileobj(f_in, f_out)
             with gzip.open(
-                    Path(flair.cache_root) / "datasets" / dataset_name / "test.txt.gz", "rb"
+                    flair.cache_root / "datasets" / dataset_name / "test.txt.gz", "rb"
             ) as f_in:
                 with open(
-                        Path(flair.cache_root) / "datasets" / dataset_name / "test.txt",
+                        flair.cache_root / "datasets" / dataset_name / "test.txt",
                         "wb",
                 ) as f_out:
                     shutil.copyfileobj(f_in, f_out)
@@ -947,11 +1406,11 @@ class DANE(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
-        data_path = Path(flair.cache_root) / "datasets" / dataset_name
+        data_path = flair.cache_root / "datasets" / dataset_name
         train_data_file = data_path / "ddt.train.conllu"
         if not train_data_file.is_file():
             temp_file = cached_path(
@@ -1014,7 +1473,7 @@ class EUROPARL_NER_GERMAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1064,7 +1523,7 @@ class GERMEVAL_14(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # check if data there
@@ -1105,7 +1564,7 @@ class INSPEC(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         inspec_path = "https://raw.githubusercontent.com/midas-research/keyphrase-extraction-as-sequence-labeling-data/master/Inspec"
@@ -1149,7 +1608,7 @@ class LER_GERMAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1162,6 +1621,54 @@ class LER_GERMAN(ColumnCorpus):
             tag_to_bioes=tag_to_bioes,
             in_memory=in_memory,
             train_file='ler.conll',
+            **corpusargs,
+        )
+
+
+class LUO_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the NER Luo language corpus available on https://github.com/masakhane-io/masakhane-ner/tree/main/data/luo.
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        ner_luo_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/luo/"
+        cached_path(f"{ner_luo_path}dev.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_luo_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_luo_path}train.txt", Path("datasets") / dataset_name)
+
+        super(LUO_NER, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            encoding="latin-1",
+            in_memory=in_memory,
             **corpusargs,
         )
 
@@ -1193,7 +1700,7 @@ class MIT_MOVIE_NER_SIMPLE(ColumnCorpus):
         if type(base_path) == str:
             base_path: Path = Path(base_path)
         if not base_path:
-            base_path: Path = Path(flair.cache_root) / "datasets"
+            base_path: Path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1241,7 +1748,7 @@ class MIT_MOVIE_NER_COMPLEX(ColumnCorpus):
         if type(base_path) == str:
             base_path: Path = Path(base_path)
         if not base_path:
-            base_path: Path = Path(flair.cache_root) / "datasets"
+            base_path: Path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1291,7 +1798,7 @@ class MIT_RESTAURANT_NER(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1304,6 +1811,343 @@ class MIT_RESTAURANT_NER(ColumnCorpus):
             columns,
             tag_to_bioes=tag_to_bioes,
             encoding="latin-1",
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class IGBO_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the igbo corpus available on https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/ibo/.
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        igbo_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/ibo/"
+        cached_path(f"{igbo_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{igbo_path}train.txt", Path("datasets") / dataset_name)
+        cached_path(f"{igbo_path}dev.txt", Path("datasets") / dataset_name)
+
+        super(IGBO_NER, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            encoding="utf-8",
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class HAUSA_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the Hausa corpus available on https://github.com/masakhane-io/masakhane-ner/tree/main/data/hau.
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        ner_hausa_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/hau/"
+        cached_path(f"{ner_hausa_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_hausa_path}train.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_hausa_path}dev.txt", Path("datasets") / dataset_name)
+
+        super(HAUSA_NER, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            encoding="latin-1",
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class NER_YORUBA(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the Yoruba corpus for NER available on:
+        https://github.com/masakhane-io/masakhane-ner/tree/main/data/yor
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        model_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/yor/"
+
+        cached_path(f"{model_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{model_path}train.txt", Path("datasets") / dataset_name)
+        cached_path(f"{model_path}dev.txt", Path("datasets") / dataset_name)
+
+        super(NER_YORUBA, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class KINYARWANDA_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        ner_kinyarwanda_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/kin/"
+        cached_path(f"{ner_kinyarwanda_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_kinyarwanda_path}train.txt", Path("datasets") / dataset_name)
+        cached_path(f"{ner_kinyarwanda_path}dev.txt", Path("datasets") / dataset_name)
+
+        super(KINYARWANDA_NER, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class LUGANDA_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the LugandaNER corpus. The first time you call this constructor it will automatically
+        download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = Path(flair.cache_root) / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        luganda_ner_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/lug/"
+        dev_file = "dev.txt"
+        test_file = "test.txt"
+        train_file = "train.txt"
+        cached_path(f"{luganda_ner_path}/{dev_file}", Path("datasets") / dataset_name)
+        cached_path(f"{luganda_ner_path}/{test_file}", Path("datasets") / dataset_name)
+        cached_path(f"{luganda_ner_path}/{train_file}", Path("datasets") / dataset_name)
+
+        super(LUGANDA_NER, self).__init__(
+            data_folder,
+            columns,
+            dev_file=dev_file,
+            test_file=test_file,
+            train_file=train_file,
+            column_delimiter=" ",
+            tag_to_bioes=tag_to_bioes,
+            encoding="latin-1",
+            in_memory=in_memory,
+            document_separator_token="-DOCSTART-",
+            **corpusargs,
+        )
+
+
+class NAIJA_PIDGIN_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the Naija Pidgin corpus for NER available on:
+        https://github.com/masakhane-io/masakhane-ner/tree/main/data/pcm
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        corpus_path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/pcm/"
+
+        cached_path(f"{corpus_path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{corpus_path}train.txt", Path("datasets") / dataset_name)
+        cached_path(f"{corpus_path}dev.txt", Path("datasets") / dataset_name)
+
+        super(NAIJA_PIDGIN_NER, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+class SWAHILI_NER(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the Swahili corpus available on:
+        https://github.com/masakhane-io/masakhane-ner/tree/main/data/swa.
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = Path(flair.cache_root) / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        path = "https://raw.githubusercontent.com/masakhane-io/masakhane-ner/main/data/swa/"
+
+        cached_path(f"{path}test.txt", Path("datasets") / dataset_name)
+        cached_path(f"{path}train.txt", Path("datasets") / dataset_name)
+        cached_path(f"{path}dev.txt", Path("datasets") / dataset_name)
+
+        super(SWAHILI_NER, self).__init__(
+            data_folder,
+            columns,
+            tag_to_bioes=tag_to_bioes,
+            encoding="utf-8",
             in_memory=in_memory,
             **corpusargs,
         )
@@ -1328,12 +2172,12 @@ class NER_BASQUE(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
         ner_basque_path = "http://ixa2.si.ehu.eus/eiec/"
-        data_path = Path(flair.cache_root) / "datasets" / dataset_name
+        data_path = flair.cache_root / "datasets" / dataset_name
         data_file = data_path / "named_ent_eu.train"
         if not data_file.is_file():
             cached_path(
@@ -1342,7 +2186,7 @@ class NER_BASQUE(ColumnCorpus):
             import tarfile, shutil
 
             with tarfile.open(
-                    Path(flair.cache_root) / "datasets" / dataset_name / "eiec_v1.0.tgz",
+                    flair.cache_root / "datasets" / dataset_name / "eiec_v1.0.tgz",
                     "r:gz",
             ) as f_in:
                 corpus_files = (
@@ -1377,7 +2221,7 @@ class NER_FINNISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1430,7 +2274,7 @@ class NER_SWEDISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1471,7 +2315,7 @@ class SEC_FILLINGS(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1512,7 +2356,7 @@ class SEMEVAL2017(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         semeval2017_path = "https://raw.githubusercontent.com/midas-research/keyphrase-extraction-as-sequence-labeling-data/master/SemEval-2017"
@@ -1545,7 +2389,7 @@ class SEMEVAL2010(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         semeval2010_path = "https://raw.githubusercontent.com/midas-research/keyphrase-extraction-as-sequence-labeling-data/master/processed_semeval-2010"
@@ -1586,7 +2430,7 @@ class TURKU_NER(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1644,7 +2488,7 @@ class TWITTER_NER(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1924,7 +2768,7 @@ class WSD_UFSAC(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # check if data there
@@ -1963,7 +2807,7 @@ def _download_wikiner(language_code: str, dataset_name: str):
     lc = language_code
 
     data_file = (
-            Path(flair.cache_root)
+            flair.cache_root
             / "datasets"
             / dataset_name
             / f"aij-wikiner-{lc}-wp3.train"
@@ -2002,7 +2846,7 @@ class UP_CHINESE(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2053,7 +2897,7 @@ class UP_ENGLISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2072,6 +2916,7 @@ class UP_ENGLISH(ColumnCorpus):
             in_memory=in_memory,
             document_separator_token=None if not document_as_sequence else "-DOCSTART-",
             comment_symbol="#",
+            label_name_map = {"_": "O"},
             **corpusargs,
         )
 
@@ -2104,7 +2949,7 @@ class UP_FRENCH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2155,7 +3000,7 @@ class UP_FINNISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2206,7 +3051,7 @@ class UP_GERMAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2257,7 +3102,7 @@ class UP_ITALIAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2308,7 +3153,7 @@ class UP_SPANISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2359,7 +3204,7 @@ class UP_SPANISH_ANCORA(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2412,7 +3257,7 @@ class WEIBO_NER(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2476,7 +3321,7 @@ class WIKIANN(MultiCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # For each language in languages, the file is downloaded if not existent
@@ -2888,7 +3733,7 @@ class WIKIGOLD_NER(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2926,7 +3771,7 @@ class WIKINER_ENGLISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2956,7 +3801,7 @@ class WIKINER_GERMAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -2986,7 +3831,7 @@ class WIKINER_DUTCH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3016,7 +3861,7 @@ class WIKINER_FRENCH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3046,7 +3891,7 @@ class WIKINER_ITALIAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3076,7 +3921,7 @@ class WIKINER_SPANISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3106,7 +3951,7 @@ class WIKINER_PORTUGUESE(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3136,7 +3981,7 @@ class WIKINER_POLISH(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3166,7 +4011,7 @@ class WIKINER_RUSSIAN(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3196,7 +4041,7 @@ class WNUT_17(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3241,7 +4086,7 @@ class WNUT_2020_NER(ColumnCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -3291,7 +4136,7 @@ def _download_wikiner(language_code: str, dataset_name: str):
     lc = language_code
 
     data_file = (
-            Path(flair.cache_root)
+            flair.cache_root
             / "datasets"
             / dataset_name
             / f"aij-wikiner-{lc}-wp3.train"
@@ -3305,14 +4150,14 @@ def _download_wikiner(language_code: str, dataset_name: str):
 
         # unpack and write out in CoNLL column-like format
         bz_file = bz2.BZ2File(
-            Path(flair.cache_root)
+            flair.cache_root
             / "datasets"
             / dataset_name
             / f"aij-wikiner-{lc}-wp3.bz2",
             "rb",
         )
         with bz_file as f, open(
-                Path(flair.cache_root)
+                flair.cache_root
                 / "datasets"
                 / dataset_name
                 / f"aij-wikiner-{lc}-wp3.train",
@@ -3375,7 +4220,7 @@ class XTREME(MultiCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # For each language in languages, the file is downloaded if not existent
@@ -3445,3 +4290,355 @@ def xtreme_to_simple_ner_annotation(data_file: Union[str, Path]):
             else:
                 liste = line.split()
                 f.write(liste[0].split(':', 1)[1] + ' ' + liste[1] + '\n')
+
+
+class REDDIT_EL_GOLD(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            in_memory: bool = True,
+            **corpusargs,
+    ):
+        """
+        Initialize the Reddit Entity Linking corpus containing gold annotations only (https://arxiv.org/abs/2101.01228v2) in the NER-like column format. 
+        The first time you call this constructor it will automatically download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download and parse data if necessary
+        reddit_el_path = "https://zenodo.org/record/3970806/files/reddit_el.zip"
+        corpus_file_name = "reddit_el_gold.txt"
+        parsed_dataset = data_folder / corpus_file_name
+
+        if not parsed_dataset.exists():
+            reddit_el_zip = cached_path(f"{reddit_el_path}", Path("datasets") / dataset_name)
+            unpack_file(reddit_el_zip, data_folder, "zip", False)
+
+            with open(data_folder / corpus_file_name, "w") as txtout:
+
+                # First parse the post titles
+                with open(data_folder / "posts.tsv", "r") as tsvin1, open(data_folder / "gold_post_annotations.tsv",
+                                                                          "r") as tsvin2:
+
+                    posts = csv.reader(tsvin1, delimiter="\t")
+                    self.post_annotations = csv.reader(tsvin2, delimiter="\t")
+                    self.curr_annot = next(self.post_annotations)
+
+                    for row in posts:  # Go through all the post titles
+
+                        txtout.writelines("-DOCSTART-\n\n")  # Start each post with a -DOCSTART- token
+
+                        # Keep track of how many and which entity mentions does a given post title have
+                        link_annots = []  # [start pos, end pos, wiki page title] of an entity mention
+
+                        # Check if the current post title has an entity link and parse accordingly
+                        if row[0] == self.curr_annot[0]:
+
+                            link_annots.append((int(self.curr_annot[4]), int(self.curr_annot[5]), self.curr_annot[3]))
+                            link_annots = self._fill_annot_array(link_annots, row[0], post_flag=True)
+
+                            # Post titles with entity mentions (if any) are handled via this function
+                            self._text_to_cols(Sentence(row[2], use_tokenizer=True), link_annots, txtout)
+                        else:
+                            self._text_to_cols(Sentence(row[2], use_tokenizer=True), link_annots, txtout)
+
+                # Then parse the comments
+                with open(data_folder / "comments.tsv", "r") as tsvin3, open(
+                        data_folder / "gold_comment_annotations.tsv", "r") as tsvin4:
+
+                    self.comments = csv.reader(tsvin3, delimiter="\t")
+                    self.comment_annotations = csv.reader(tsvin4, delimiter="\t")
+                    self.curr_annot = next(self.comment_annotations)
+                    self.curr_row = next(self.comments)
+                    self.stop_iter = False
+
+                    # Iterate over the comments.tsv file, until the end is reached
+                    while not self.stop_iter:
+
+                        txtout.writelines("-DOCSTART-\n")  # Start each comment thread with a -DOCSTART- token
+
+                        # Keep track of the current comment thread and its corresponding key, on which the annotations are matched.
+                        # Each comment thread is handled as one 'document'.
+                        self.curr_comm = self.curr_row[4]
+                        comm_key = self.curr_row[0]
+
+                        # Python's csv package for some reason fails to correctly parse a handful of rows inside the comments.tsv file.
+                        # This if-condition is needed to handle this problem.
+                        if comm_key in {"en5rf4c", "es3ia8j", "es3lrmw"}:
+                            if comm_key == "en5rf4c":
+                                self.parsed_row = (r.split("\t") for r in self.curr_row[4].split("\n"))
+                                self.curr_comm = next(self.parsed_row)
+                            self._fill_curr_comment(fix_flag=True)
+                        # In case we are dealing with properly parsed rows, proceed with a regular parsing procedure
+                        else:
+                            self._fill_curr_comment(fix_flag=False)
+
+                        link_annots = []  # [start pos, end pos, wiki page title] of an entity mention
+
+                        # Check if the current comment thread has an entity link and parse accordingly, same as with post titles above
+                        if comm_key == self.curr_annot[0]:
+                            link_annots.append((int(self.curr_annot[4]), int(self.curr_annot[5]), self.curr_annot[3]))
+                            link_annots = self._fill_annot_array(link_annots, comm_key, post_flag=False)
+                            self._text_to_cols(Sentence(self.curr_comm, use_tokenizer=True), link_annots, txtout)
+                        else:
+                            # In two of the comment thread a case of capital letter spacing occurs, which the SegtokTokenizer cannot properly handle.
+                            # The following if-elif condition handles these two cases and as result writes full capitalized words in each corresponding row, 
+                            # and not just single letters into single rows.
+                            if comm_key == "dv74ybb":
+                                self.curr_comm = " ".join(
+                                    [word.replace(" ", "") for word in self.curr_comm.split("  ")])
+                            elif comm_key == "eci2lut":
+                                self.curr_comm = (self.curr_comm[:18] + self.curr_comm[18:27].replace(" ",
+                                                                                                      "") + self.curr_comm[
+                                                                                                            27:55] +
+                                                  self.curr_comm[55:68].replace(" ", "") + self.curr_comm[
+                                                                                           68:85] + self.curr_comm[
+                                                                                                    85:92].replace(" ",
+                                                                                                                   "") +
+                                                  self.curr_comm[92:])
+
+                            self._text_to_cols(Sentence(self.curr_comm, use_tokenizer=True), link_annots, txtout)
+
+        super(REDDIT_EL_GOLD, self).__init__(
+            data_folder,
+            columns,
+            train_file=corpus_file_name,
+            column_delimiter="\t",
+            in_memory=in_memory,
+            document_separator_token="-DOCSTART-",
+            **corpusargs,
+        )
+
+    def _text_to_cols(self, sentence: Sentence, links: list, outfile):
+        """
+        Convert a tokenized sentence into column format
+        :param sentence: Flair Sentence object containing a tokenized post title or comment thread
+        :param links: array containing information about the starting and ending position of an entity mention, as well
+        as its corresponding wiki tag
+        :param outfile: file, to which the output is written
+        """
+        for i in range(0, len(sentence)):
+            # If there are annotated entity mentions for given post title or a comment thread
+            if links:
+                # Keep track which is the correct corresponding entity link, in cases where there is >1 link in a sentence
+                link_index = [j for j, v in enumerate(links) if
+                              (sentence[i].start_pos >= v[0] and sentence[i].end_pos <= v[1])]
+                # Write the token with a corresponding tag to file
+                try:
+                    if any(sentence[i].start_pos == v[0] and sentence[i].end_pos == v[1] for j, v in enumerate(links)):
+                        outfile.writelines(sentence[i].text + "\tS-Link:" + links[link_index[0]][2] + "\n")
+                    elif any(
+                            sentence[i].start_pos == v[0] and sentence[i].end_pos != v[1] for j, v in enumerate(links)):
+                        outfile.writelines(sentence[i].text + "\tB-Link:" + links[link_index[0]][2] + "\n")
+                    elif any(
+                            sentence[i].start_pos >= v[0] and sentence[i].end_pos <= v[1] for j, v in enumerate(links)):
+                        outfile.writelines(sentence[i].text + "\tI-Link:" + links[link_index[0]][2] + "\n")
+                    else:
+                        outfile.writelines(sentence[i].text + "\tO\n")
+                # IndexError is raised in cases when there is exactly one link in a sentence, therefore can be dismissed
+                except IndexError:
+                    pass
+
+            # If a comment thread or a post title has no entity link, all tokens are assigned the O tag
+            else:
+                outfile.writelines(sentence[i].text + "\tO\n")
+
+            # Prevent writing empty lines if e.g. a quote comes after a dot or initials are tokenized
+            # incorrectly, in order to keep the desired format (empty line as a sentence separator).
+            try:
+                if ((sentence[i].text in {".", "!", "?", "!*"}) and
+                        (sentence[i + 1].text not in {'"', '“', "'", "''", "!", "?", ";)", "."}) and
+                        ("." not in sentence[i - 1].text)):
+                    outfile.writelines("\n")
+            except IndexError:
+                # Thrown when the second check above happens, but the last token of a sentence is reached.
+                # Indicates that the EOS punctuaion mark is present, therefore an empty line needs to be written below.
+                outfile.writelines("\n")
+
+        # If there is no punctuation mark indicating EOS, an empty line is still needed after the EOS
+        if sentence[-1].text not in {".", "!", "?"}:
+            outfile.writelines("\n")
+
+    def _fill_annot_array(self, annot_array: list, key: str, post_flag: bool) -> list:
+        """
+        Fills the array containing information about the entity mention annotations, used in the _text_to_cols method
+        :param annot_array: array to be filled
+        :param key: reddit id, on which the post title/comment thread is matched with its corresponding annotation
+        :param post_flag: flag indicating whether the annotations are collected for the post titles (=True)
+        or comment threads (=False)
+        """
+        next_annot = None
+        while True:
+            # Check if further annotations belong to the current post title or comment thread as well
+            try:
+                next_annot = next(self.post_annotations) if post_flag else next(self.comment_annotations)
+                if next_annot[0] == key:
+                    annot_array.append((int(next_annot[4]), int(next_annot[5]), next_annot[3]))
+                else:
+                    self.curr_annot = next_annot
+                    break
+            # Stop when the end of an annotation file is reached
+            except StopIteration:
+                break
+        return annot_array
+
+    def _fill_curr_comment(self, fix_flag: bool):
+        """
+        Extends the string containing the current comment thread, which is passed to _text_to_cols method, when the
+        comments are parsed.
+        :param fix_flag: flag indicating whether the method is called when the incorrectly imported rows are parsed (=True)
+        or regular rows (=False)
+        """
+        next_row = None
+        while True:
+            # Check if further annotations belong to the current sentence as well
+            try:
+                next_row = next(self.comments) if not fix_flag else next(self.parsed_row)
+                if len(next_row) < 2:
+                    # 'else "  "' is needed to keep the proper token positions (for accordance with annotations)
+                    self.curr_comm += next_row[0] if any(next_row) else "  "
+                else:
+                    self.curr_row = next_row
+                    break
+            except StopIteration:  # When the end of the comments.tsv file is reached
+                self.curr_row = next_row
+                self.stop_iter = True if not fix_flag else False
+                break
+
+
+class NER_GERMAN_POLITICS(ColumnCorpus):
+    def __init__(
+            self,
+            base_path: Union[str, Path] = None,
+            tag_to_bioes: str = "ner",
+            column_delimiter: str = r"\s+",
+            in_memory: bool = True,
+            document_as_sequence: bool = False,
+            **corpusargs,
+    ):
+        """
+        Initialize the NER_GERMAN_POLITICS corpus for german politics. The first time you call this constructor it will automatically
+        download the dataset.
+        :param base_path: Default is None, meaning that corpus gets auto-downloaded and loaded. You can override this
+        to point to a different folder but typically this should not be necessary.
+        :param tag_to_bioes: NER by default, need not be changed, but you could also select 'pos' to predict
+        POS tags instead
+        :param in_memory: If True, keeps dataset in memory giving speedups in training.
+        :param document_as_sequence: If True, all sentences of a document are read into a single Sentence object
+        """
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # column format
+        columns = {0: "text", 1: "ner"}
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download and parse data if necessary
+        german_politics_path = "https://www.thomas-zastrow.de/nlp/nemgp_trainingdata_01.txt.zip"
+        corpus_file_name = "nemgp_trainingdata_01.txt"
+        parsed_dataset = data_folder / "raw" / corpus_file_name
+        train_dataset = data_folder / "train.txt"
+
+        if not parsed_dataset.exists():
+            german_politics_zip = cached_path(f"{german_politics_path}", Path("datasets") / dataset_name / "raw")
+            unpack_file(german_politics_zip, data_folder / "raw", "zip", False)
+            convert_to_column_corpus(parsed_dataset)
+
+        # create train test dev if not exist
+        train_dataset = data_folder / "train.txt"
+        if not train_dataset.exists():
+            create_datasets(parsed_dataset, data_folder)
+
+        super(NER_GERMAN_POLITICS, self).__init__(
+            data_folder,
+            columns,
+            column_delimiter=column_delimiter,
+            train_file='train.txt',
+            dev_file='dev.txt',
+            test_file='test.txt',
+            tag_to_bioes=tag_to_bioes,
+            encoding="utf-8",
+            in_memory=in_memory,
+            **corpusargs,
+        )
+
+
+def convert_to_column_corpus(data_file: Union[str, Path]):
+    with open(data_file, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    with open(data_file, 'w', encoding='utf-8') as f:
+        tag_bool = False
+        new_sentence = True
+        for line in lines:
+            line = re.sub('\s{2,}', ' ', line).strip().split(' ')
+            for substr in line:
+                if substr == '.':
+                    f.write("\n")
+                    new_sentence = True
+                elif "<START:" in substr:
+                    tag_bool = True
+                    tag = substr.strip('<START:').strip('>')
+                    if 'loc' in tag: tag_IOB = '-LOC'
+                    elif 'per' in tag: tag_IOB = '-PER'
+                    elif 'org' in tag: tag_IOB = '-ORG'
+                    elif 'misc' in tag: tag_IOB = '-MISC'
+                elif "<END>" in substr:
+                    tag_bool = False
+                    new_sentence = True
+                else:
+                    if tag_bool:
+                        if new_sentence is True:
+                            start = 'B'
+                            new_sentence = False
+                        else:
+                            start = 'I'
+                        f.write(substr.strip(' ') + " " + start + tag_IOB + "\n")
+                    else:
+                        f.write(substr.strip(' ') + " " + 'O' + "\n")
+
+
+def create_datasets(data_file: Union[str, Path], data_folder: Union[str, Path]):
+    with open(data_file, 'r') as file:
+        num_lines = len(file.readlines())
+        file.seek(0)
+
+        train_len = round(num_lines * 0.8)
+        test_len = round(num_lines * 0.1)
+        dev_len = num_lines - train_len - test_len
+
+        train = open( data_folder / "train.txt", "w")
+        test = open( data_folder / "test.txt", "w")
+        dev = open( data_folder / "dev.txt", "w")
+
+        k = 0
+        for line in file.readlines():
+            k += 1
+            if k <= train_len:
+                train.write(line)
+            elif k > train_len and k <= (train_len + test_len):
+                test.write(line)
+            elif k > (train_len + test_len) and k <= num_lines:
+                dev.write(line)

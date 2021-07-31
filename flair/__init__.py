@@ -4,7 +4,7 @@ from pathlib import Path
 from transformers import set_seed as hf_set_seed
 
 # global variable: cache_root
-cache_root = os.getenv('FLAIR_CACHE_ROOT', Path(Path.home(), ".flair"))
+cache_root = Path(os.getenv('FLAIR_CACHE_ROOT', Path(Path.home(), ".flair")))
 
 # global variable: device
 device = None
@@ -25,7 +25,7 @@ from .training_utils import AnnealOnPlateau
 
 import logging.config
 
-__version__ = "0.7"
+__version__ = "0.8.1"
 
 logging.config.dictConfig(
     {

@@ -7,7 +7,7 @@ from collections import Counter
 
 import torch
 from bpemb import BPEmb
-from transformers import AutoTokenizer, AutoConfig, AutoModel, CONFIG_MAPPING, PreTrainedTokenizer
+from transformers import AutoTokenizer, AutoConfig, AutoModel, CONFIG_MAPPING, PreTrainedTokenizer, XLNetModel, TransfoXLModel
 
 import flair
 import gensim
@@ -409,8 +409,8 @@ class FlairEmbeddings(TokenEmbeddings):
             "multi-backward": f"{hu_path}/lm-jw300-backward-v0.1.pt",
             "multi-v0-forward": f"{hu_path}/lm-multi-forward-v0.1.pt",
             "multi-v0-backward": f"{hu_path}/lm-multi-backward-v0.1.pt",
-            "multi-v0-forward-fast": f"{hu_path}/lm-multi-forward-fast-v0.1.pt",
-            "multi-v0-backward-fast": f"{hu_path}/lm-multi-backward-fast-v0.1.pt",
+            "multi-forward-fast": f"{hu_path}/lm-multi-forward-fast-v0.1.pt",
+            "multi-backward-fast": f"{hu_path}/lm-multi-backward-fast-v0.1.pt",
             # English models
             "en-forward": f"{hu_path}/news-forward-0.4.1.pt",
             "en-backward": f"{hu_path}/news-backward-0.4.1.pt",
@@ -523,6 +523,9 @@ class FlairEmbeddings(TokenEmbeddings):
             # Tamil
             "ta-forward": f"{hu_path}/lm-ta-opus-large-forward-v0.1.pt",
             "ta-backward": f"{hu_path}/lm-ta-opus-large-backward-v0.1.pt",
+            # Spanish clinical
+            "es-clinical-forward": f"{hu_path}/es-clinical-forward.pt",
+            "es-clinical-backward": f"{hu_path}/es-clinical-backward.pt",
             # CLEF HIPE Shared task
             "de-impresso-hipe-v1-forward": f"{clef_hipe_path}/de-hipe-flair-v1-forward/best-lm.pt",
             "de-impresso-hipe-v1-backward": f"{clef_hipe_path}/de-hipe-flair-v1-backward/best-lm.pt",
@@ -591,6 +594,7 @@ class FlairEmbeddings(TokenEmbeddings):
         if "chars_per_chunk" not in self.__dict__:
             self.chars_per_chunk = 512
 
+        # unless fine-tuning is set, do not set language model to train() in order to disallow language model dropout
         if not self.fine_tune:
             pass
         else:
@@ -782,6 +786,9 @@ class PooledFlairEmbeddings(TokenEmbeddings):
 
 
 class TransformerWordEmbeddings(TokenEmbeddings):
+
+    NO_MAX_SEQ_LENGTH_MODELS=[XLNetModel, TransfoXLModel]
+
     def __init__(
             self,
             model: str = "bert-base-uncased",
@@ -822,14 +829,19 @@ class TransformerWordEmbeddings(TokenEmbeddings):
         else:
             self.model = AutoModel.from_pretrained(None, **kwargs)
 
-        self.allow_long_sentences = allow_long_sentences
-
-        if allow_long_sentences:
+        
+        if type(self.model) not in self.NO_MAX_SEQ_LENGTH_MODELS:
+            self.allow_long_sentences = allow_long_sentences
+            self.truncate = True
             self.max_subtokens_sequence_length = self.tokenizer.model_max_length
-            self.stride = self.tokenizer.model_max_length // 2
+            self.stride = self.tokenizer.model_max_length // 2 if allow_long_sentences else 0
         else:
-            self.max_subtokens_sequence_length = self.tokenizer.model_max_length
+            # in the end, these models don't need this configuration
+            self.allow_long_sentences = False
+            self.truncate = False
+            self.max_subtokens_sequence_length = None
             self.stride = 0
+
 
         # model name
         self.name = 'transformer-word-' + str(model)
@@ -837,7 +849,6 @@ class TransformerWordEmbeddings(TokenEmbeddings):
 
         # whether to detach gradients on overlong sentences
         self.memory_effective_training = memory_effective_training
-
 
         # store whether to use context (and how much)
         if type(use_context) == bool:
@@ -980,7 +991,7 @@ class TransformerWordEmbeddings(TokenEmbeddings):
                                                             max_length=self.max_subtokens_sequence_length,
                                                             stride=self.stride,
                                                             return_overflowing_tokens=self.allow_long_sentences,
-                                                            truncation=True,
+                                                            truncation=self.truncate,
                                                             )
 
                 sentence_splits.append(torch.tensor(encoded_inputs['input_ids'], dtype=torch.long))
@@ -996,12 +1007,14 @@ class TransformerWordEmbeddings(TokenEmbeddings):
                                                         max_length=self.max_subtokens_sequence_length,
                                                         stride=self.stride,
                                                         return_overflowing_tokens=self.allow_long_sentences,
-                                                        truncation=True,
+                                                        truncation=self.truncate,
                                                         )
-
-            # overlong sentences are handled as multiple splits
-            for encoded_input in encoded_inputs['input_ids']:
-                sentence_splits.append(torch.tensor(encoded_input, dtype=torch.long))
+            if self.allow_long_sentences:
+                # overlong sentences are handled as multiple splits
+                for encoded_input in encoded_inputs['input_ids']:
+                    sentence_splits.append(torch.tensor(encoded_input, dtype=torch.long))
+            else:
+                sentence_splits.append(torch.tensor(encoded_inputs['input_ids'], dtype=torch.long))
 
         # embed each sentence split
         hidden_states_of_all_splits = []
@@ -1274,7 +1287,8 @@ class TransformerWordEmbeddings(TokenEmbeddings):
         if "config_state_dict" in d:
 
             # load transformer model
-            config_class = CONFIG_MAPPING[d["config_state_dict"]["model_type"]]
+            model_type = d["config_state_dict"]["model_type"] if "model_type" in d["config_state_dict"] else "bert"
+            config_class = CONFIG_MAPPING[model_type]
             loaded_config = config_class.from_dict(d["config_state_dict"])
 
             # constructor arguments
@@ -1671,7 +1685,7 @@ class BPEmbSerializable(BPEmb):
         self.__dict__ = state
 
         # write out the binary sentence piece model into the expected directory
-        self.cache_dir: Path = Path(flair.cache_root) / "embeddings"
+        self.cache_dir: Path = flair.cache_root / "embeddings"
         if "spm_model_binary" in self.__dict__:
             # if the model was saved as binary and it is not found on disk, write to appropriate path
             if not os.path.exists(self.cache_dir / state["lang"]):
@@ -1704,7 +1718,7 @@ class BytePairEmbeddings(TokenEmbeddings):
         self.instance_parameters = self.get_instance_parameters(locals=locals())
 
         if not cache_dir:
-            cache_dir = Path(flair.cache_root) / "embeddings"
+            cache_dir = flair.cache_root / "embeddings"
         if language:
             self.name: str = f"bpe-{language}-{syllables}-{dim}"
         else:

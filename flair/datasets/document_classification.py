@@ -11,11 +11,14 @@ from flair.data import (
     Corpus,
     Token,
     FlairDataset,
-    Tokenizer
+    Tokenizer, DataPair
 )
 from flair.tokenization import SegtokTokenizer, SpaceTokenizer
 from flair.datasets.base import find_train_dev_test_files
 from flair.file_utils import cached_path, unzip_file
+
+import logging
+log = logging.getLogger("flair")
 
 
 class ClassificationCorpus(Corpus):
@@ -37,6 +40,7 @@ class ClassificationCorpus(Corpus):
             memory_mode: str = "partial",
             label_name_map: Dict[str, str] = None,
             skip_labels: List[str] = None,
+            allow_examples_without_labels=False,
             encoding: str = 'utf-8',
     ):
         """
@@ -55,6 +59,7 @@ class ClassificationCorpus(Corpus):
         if full corpus and all embeddings fits into memory for speedups during training. Otherwise use 'partial' and if
         even this is too much for your memory, use 'disk'.
         :param label_name_map: Optionally map label names to different schema.
+        :param allow_examples_without_labels: set to True to allow Sentences without label in the corpus.
         :param encoding: Default is 'uft-8' but some datasets are in 'latin-1
         :return: a Corpus with annotated train, dev and test data
         """
@@ -73,6 +78,7 @@ class ClassificationCorpus(Corpus):
             memory_mode=memory_mode,
             label_name_map=label_name_map,
             skip_labels=skip_labels,
+            allow_examples_without_labels=allow_examples_without_labels,
             encoding=encoding,
         )
 
@@ -87,6 +93,7 @@ class ClassificationCorpus(Corpus):
             memory_mode=memory_mode,
             label_name_map=label_name_map,
             skip_labels=skip_labels,
+            allow_examples_without_labels=allow_examples_without_labels,
             encoding=encoding,
         ) if test_file is not None else None
 
@@ -101,12 +108,15 @@ class ClassificationCorpus(Corpus):
             memory_mode=memory_mode,
             label_name_map=label_name_map,
             skip_labels=skip_labels,
+            allow_examples_without_labels=allow_examples_without_labels,
             encoding=encoding,
         ) if dev_file is not None else None
 
         super(ClassificationCorpus, self).__init__(
             train, dev, test, name=str(data_folder)
         )
+
+        log.info(f"Initialized corpus {self.name} (label type name is '{label_type}')")
 
 
 class ClassificationDataset(FlairDataset):
@@ -117,7 +127,7 @@ class ClassificationDataset(FlairDataset):
     def __init__(
             self,
             path_to_file: Union[str, Path],
-            label_type: str = 'class',
+            label_type: str,
             truncate_to_max_tokens=-1,
             truncate_to_max_chars=-1,
             filter_if_longer_than: int = -1,
@@ -125,6 +135,7 @@ class ClassificationDataset(FlairDataset):
             memory_mode: str = "partial",
             label_name_map: Dict[str, str] = None,
             skip_labels: List[str] = None,
+            allow_examples_without_labels=False,
             encoding: str = 'utf-8',
     ):
         """
@@ -143,6 +154,7 @@ class ClassificationDataset(FlairDataset):
         if full corpus and all embeddings fits into memory for speedups during training. Otherwise use 'partial' and if
         even this is too much for your memory, use 'disk'.
         :param label_name_map: Optionally map label names to different schema.
+        :param allow_examples_without_labels: set to True to allow Sentences without label in the Dataset.
         :param encoding: Default is 'uft-8' but some datasets are in 'latin-1
         :return: list of sentences
         """
@@ -169,6 +181,7 @@ class ClassificationDataset(FlairDataset):
         self.truncate_to_max_tokens = truncate_to_max_tokens
         self.filter_if_longer_than = filter_if_longer_than
         self.label_name_map = label_name_map
+        self.allow_examples_without_labels = allow_examples_without_labels
 
         self.path_to_file = path_to_file
 
@@ -176,7 +189,7 @@ class ClassificationDataset(FlairDataset):
             line = f.readline()
             position = 0
             while line:
-                if "__label__" not in line or (" " not in line and "\t" not in line):
+                if ("__label__" not in line and not allow_examples_without_labels) or (" " not in line and "\t" not in line):
                     position = f.tell()
                     line = f.readline()
                     continue
@@ -219,7 +232,7 @@ class ClassificationDataset(FlairDataset):
                     text = line[l_len:].strip()
 
                     # if so, add to indices
-                    if text and label:
+                    if text and (label or allow_examples_without_labels):
 
                         if self.memory_mode == 'partial':
                             self.lines.append(line)
@@ -257,7 +270,7 @@ class ClassificationDataset(FlairDataset):
         if self.truncate_to_max_chars > 0:
             text = text[: self.truncate_to_max_chars]
 
-        if text and labels:
+        if text and (labels or self.allow_examples_without_labels):
             sentence = Sentence(text, use_tokenizer=tokenizer)
 
             for label in labels:
@@ -310,7 +323,7 @@ class CSVClassificationCorpus(Corpus):
             self,
             data_folder: Union[str, Path],
             column_name_map: Dict[int, str],
-            label_type: str = 'class',
+            label_type: str,
             train_file=None,
             test_file=None,
             dev_file=None,
@@ -402,7 +415,7 @@ class CSVClassificationDataset(FlairDataset):
             self,
             path_to_file: Union[str, Path],
             column_name_map: Dict[int, str],
-            label_type: str = "class",
+            label_type: str,
             max_tokens_per_doc: int = -1,
             max_chars_per_doc: int = -1,
             tokenizer: Tokenizer = SegtokTokenizer(),
@@ -454,9 +467,12 @@ class CSVClassificationDataset(FlairDataset):
 
         # most data sets have the token text in the first column, if not, pass 'text' as column
         self.text_columns: List[int] = []
+        self.pair_columns: List[int] = []
         for column in column_name_map:
             if column_name_map[column] == "text":
                 self.text_columns.append(column)
+            if column_name_map[column] == "pair":
+                self.pair_columns.append(column)
 
         with open(self.path_to_file, encoding=encoding) as csv_file:
 
@@ -488,32 +504,60 @@ class CSVClassificationDataset(FlairDataset):
 
                 if self.in_memory:
 
-                    text = " ".join(
-                        [row[text_column] for text_column in self.text_columns]
-                    )
+                    sentence = self._make_labeled_data_point(row)
 
-                    if self.max_chars_per_doc > 0:
-                        text = text[: self.max_chars_per_doc]
-
-                    sentence = Sentence(text, use_tokenizer=self.tokenizer)
-
-                    for column in self.column_name_map:
-                        column_value = row[column]
-                        if (
-                                self.column_name_map[column].startswith("label")
-                                and column_value
-                        ):
-                            if column_value != self.no_class_label:
-                                sentence.add_label(label_type, column_value)
-
-                    if 0 < self.max_tokens_per_doc < len(sentence):
-                        sentence.tokens = sentence.tokens[: self.max_tokens_per_doc]
                     self.sentences.append(sentence)
 
                 else:
                     self.raw_data.append(row)
 
                 self.total_sentence_count += 1
+
+    def _make_labeled_data_point(self, row):
+
+        # make sentence from text (and filter for length)
+        text = " ".join(
+            [row[text_column] for text_column in self.text_columns]
+        )
+
+        if self.max_chars_per_doc > 0:
+            text = text[: self.max_chars_per_doc]
+
+        sentence = Sentence(text, use_tokenizer=self.tokenizer)
+
+        if 0 < self.max_tokens_per_doc < len(sentence):
+            sentence.tokens = sentence.tokens[: self.max_tokens_per_doc]
+
+        # if a pair column is defined, make a sentence pair object
+        if len(self.pair_columns) > 0:
+
+            text = " ".join(
+                [row[pair_column] for pair_column in self.pair_columns]
+            )
+
+            if self.max_chars_per_doc > 0:
+                text = text[: self.max_chars_per_doc]
+
+            pair = Sentence(text, use_tokenizer=self.tokenizer)
+
+            if 0 < self.max_tokens_per_doc < len(sentence):
+                pair.tokens = pair.tokens[: self.max_tokens_per_doc]
+
+            data_point = DataPair(first=sentence, second=pair)
+
+        else:
+            data_point = sentence
+
+        for column in self.column_name_map:
+            column_value = row[column]
+            if (
+                    self.column_name_map[column].startswith("label")
+                    and column_value
+            ):
+                if column_value != self.no_class_label:
+                    data_point.add_label(self.label_type, column_value)
+
+        return data_point
 
     def is_in_memory(self) -> bool:
         return self.in_memory
@@ -527,20 +571,7 @@ class CSVClassificationDataset(FlairDataset):
         else:
             row = self.raw_data[index]
 
-            text = " ".join([row[text_column] for text_column in self.text_columns])
-
-            if self.max_chars_per_doc > 0:
-                text = text[: self.max_chars_per_doc]
-
-            sentence = Sentence(text, use_tokenizer=self.tokenizer)
-            for column in self.column_name_map:
-                column_value = row[column]
-                if self.column_name_map[column].startswith("label") and column_value:
-                    if column_value != self.no_class_label:
-                        sentence.add_label(self.label_type, column_value)
-
-            if 0 < self.max_tokens_per_doc < len(sentence):
-                sentence.tokens = sentence.tokens[: self.max_tokens_per_doc]
+            sentence = self._make_labeled_data_point(row)
 
             return sentence
 
@@ -587,7 +618,7 @@ class AMAZON_REVIEWS(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower() + '_' + str(split_max) + '_' + str(fraction_of_5_star_reviews)
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if not (data_folder / "train.txt").is_file():
@@ -676,7 +707,7 @@ class AMAZON_REVIEWS(ClassificationCorpus):
             write_count = 0
             review_5_count = 0
             # download senteval datasets if necessary und unzip
-            with gzip.open(Path(flair.cache_root) / "datasets" / 'Amazon_Product_Reviews' / part_name, "rb", ) as f_in:
+            with gzip.open(flair.cache_root / "datasets" / 'Amazon_Product_Reviews' / part_name, "rb", ) as f_in:
                 for line in f_in:
                     parsed_json = json.loads(line)
                     if 'reviewText' not in parsed_json:
@@ -727,26 +758,30 @@ class IMDB(ClassificationCorpus):
             base_path: Path = Path(base_path)
 
         # this dataset name
-        dataset_name = self.__class__.__name__.lower() + '_v2'
-
-        if rebalance_corpus:
-            dataset_name = dataset_name + '-rebalanced'
+        dataset_name = self.__class__.__name__.lower() + '_v4'
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
-        data_folder = base_path / dataset_name
+            base_path = flair.cache_root / "datasets"
 
         # download data if necessary
         imdb_acl_path = "http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz"
-        data_path = Path(flair.cache_root) / "datasets" / dataset_name
-        data_file = data_path / "train.txt"
-        if not data_file.is_file():
+
+        if rebalance_corpus:
+            dataset_name = dataset_name + '-rebalanced'
+        data_folder = base_path / dataset_name
+        data_path = flair.cache_root / "datasets" / dataset_name
+        train_data_file = data_path / "train.txt"
+        test_data_file = data_path / "test.txt"
+
+        if train_data_file.is_file()==False or (rebalance_corpus==False and test_data_file.is_file()==False):
+            [os.remove(file_path) for file_path in [train_data_file, test_data_file] if file_path.is_file()]
+
             cached_path(imdb_acl_path, Path("datasets") / dataset_name)
             import tarfile
 
             with tarfile.open(
-                    Path(flair.cache_root)
+                    flair.cache_root
                     / "datasets"
                     / dataset_name
                     / "aclImdb_v1.tar.gz",
@@ -765,7 +800,11 @@ class IMDB(ClassificationCorpus):
                                 if f"{dataset}/{label}" in m.name
                             ],
                         )
-                        with open(f"{data_path}/train-all.txt", "at") as f_p:
+                        data_file = train_data_file
+                        if rebalance_corpus==False and dataset=="test":
+                            data_file = test_data_file
+
+                        with open(data_file, "at") as f_p:
                             current_path = data_path / "aclImdb" / dataset / label
                             for file_name in current_path.iterdir():
                                 if file_name.is_file() and file_name.name.endswith(
@@ -780,7 +819,7 @@ class IMDB(ClassificationCorpus):
                                     )
 
         super(IMDB, self).__init__(
-            data_folder, tokenizer=tokenizer, memory_mode=memory_mode, **corpusargs
+            data_folder, label_type='sentiment', tokenizer=tokenizer, memory_mode=memory_mode, **corpusargs
         )
 
 
@@ -813,14 +852,14 @@ class NEWSGROUPS(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
         twenty_newsgroups_path = (
             "http://qwone.com/~jason/20Newsgroups/20news-bydate.tar.gz"
         )
-        data_path = Path(flair.cache_root) / "datasets" / dataset_name
+        data_path = flair.cache_root / "datasets" / dataset_name
         data_file = data_path / "20news-bydate-train.txt"
         if not data_file.is_file():
             cached_path(
@@ -830,7 +869,7 @@ class NEWSGROUPS(ClassificationCorpus):
             import tarfile
 
             with tarfile.open(
-                    Path(flair.cache_root)
+                    flair.cache_root
                     / "datasets"
                     / dataset_name
                     / "original"
@@ -922,7 +961,7 @@ class SENTIMENT_140(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if True or not (data_folder / "train.txt").is_file():
@@ -930,7 +969,7 @@ class SENTIMENT_140(ClassificationCorpus):
             # download senteval datasets if necessary und unzip
             sentiment_url = "https://cs.stanford.edu/people/alecmgo/trainingandtestdata.zip"
             cached_path(sentiment_url, Path("datasets") / dataset_name / 'raw')
-            senteval_folder = Path(flair.cache_root) / "datasets" / dataset_name / 'raw'
+            senteval_folder = flair.cache_root / "datasets" / dataset_name / 'raw'
             unzip_file(senteval_folder / "trainingandtestdata.zip", senteval_folder)
 
             # create dataset directory if necessary
@@ -989,7 +1028,7 @@ class SENTEVAL_CR(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if not (data_folder / "train.txt").is_file():
@@ -997,7 +1036,7 @@ class SENTEVAL_CR(ClassificationCorpus):
             # download senteval datasets if necessary und unzip
             senteval_path = "https://dl.fbaipublicfiles.com/senteval/senteval_data/datasmall_NB_ACL12.zip"
             cached_path(senteval_path, Path("datasets") / "senteval")
-            senteval_folder = Path(flair.cache_root) / "datasets" / "senteval"
+            senteval_folder = flair.cache_root / "datasets" / "senteval"
             unzip_file(senteval_folder / "datasmall_NB_ACL12.zip", senteval_folder)
 
             # create dataset directory if necessary
@@ -1043,7 +1082,7 @@ class SENTEVAL_MR(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if not (data_folder / "train.txt").is_file():
@@ -1051,7 +1090,7 @@ class SENTEVAL_MR(ClassificationCorpus):
             # download senteval datasets if necessary und unzip
             senteval_path = "https://dl.fbaipublicfiles.com/senteval/senteval_data/datasmall_NB_ACL12.zip"
             cached_path(senteval_path, Path("datasets") / "senteval")
-            senteval_folder = Path(flair.cache_root) / "datasets" / "senteval"
+            senteval_folder = flair.cache_root / "datasets" / "senteval"
             unzip_file(senteval_folder / "datasmall_NB_ACL12.zip", senteval_folder)
 
             # create dataset directory if necessary
@@ -1097,7 +1136,7 @@ class SENTEVAL_SUBJ(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if not (data_folder / "train.txt").is_file():
@@ -1105,7 +1144,7 @@ class SENTEVAL_SUBJ(ClassificationCorpus):
             # download senteval datasets if necessary und unzip
             senteval_path = "https://dl.fbaipublicfiles.com/senteval/senteval_data/datasmall_NB_ACL12.zip"
             cached_path(senteval_path, Path("datasets") / "senteval")
-            senteval_folder = Path(flair.cache_root) / "datasets" / "senteval"
+            senteval_folder = flair.cache_root / "datasets" / "senteval"
             unzip_file(senteval_folder / "datasmall_NB_ACL12.zip", senteval_folder)
 
             # create dataset directory if necessary
@@ -1151,7 +1190,7 @@ class SENTEVAL_MPQA(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if not (data_folder / "train.txt").is_file():
@@ -1159,7 +1198,7 @@ class SENTEVAL_MPQA(ClassificationCorpus):
             # download senteval datasets if necessary und unzip
             senteval_path = "https://dl.fbaipublicfiles.com/senteval/senteval_data/datasmall_NB_ACL12.zip"
             cached_path(senteval_path, Path("datasets") / "senteval")
-            senteval_folder = Path(flair.cache_root) / "datasets" / "senteval"
+            senteval_folder = flair.cache_root / "datasets" / "senteval"
             unzip_file(senteval_folder / "datasmall_NB_ACL12.zip", senteval_folder)
 
             # create dataset directory if necessary
@@ -1205,7 +1244,7 @@ class SENTEVAL_SST_BINARY(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower() + '_v2'
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if not (data_folder / "train.txt").is_file():
@@ -1257,7 +1296,7 @@ class SENTEVAL_SST_GRANULAR(ClassificationCorpus):
         dataset_name = self.__class__.__name__.lower()
 
         # default dataset folder is the cache root
-        data_folder = Path(flair.cache_root) / "datasets" / dataset_name
+        data_folder = flair.cache_root / "datasets" / dataset_name
 
         # download data if necessary
         if not (data_folder / "train.txt").is_file():
@@ -1293,7 +1332,6 @@ class GO_EMOTIONS(ClassificationCorpus):
     """
     GoEmotions dataset containing 58k Reddit comments labeled with 27 emotion categories, see. https://github.com/google-research/google-research/tree/master/goemotions
     """
-
     def __init__(
             self,
             base_path: Union[str, Path] = None,
@@ -1347,7 +1385,7 @@ class GO_EMOTIONS(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
 
         # this dataset name
         dataset_name = self.__class__.__name__.lower()
@@ -1367,7 +1405,7 @@ class GO_EMOTIONS(ClassificationCorpus):
             if not os.path.exists(data_folder):
                 os.makedirs(data_folder)
 
-            data_path = Path(flair.cache_root) / "datasets" / dataset_name / 'raw'
+            data_path = flair.cache_root / "datasets" / dataset_name / 'raw'
             # create correctly formated txt files
             for name in ["train", "test", "dev"]:
                 with open(data_folder / (name + '.txt'), "w", encoding='utf-8') as txt_file:
@@ -1387,7 +1425,7 @@ class GO_EMOTIONS(ClassificationCorpus):
                             txt_file.write(f"{label_string}{text}\n")
 
         super(GO_EMOTIONS, self).__init__(
-            data_folder, label_type='sentiment', tokenizer=tokenizer,
+            data_folder, label_type='emotion', tokenizer=tokenizer,
             memory_mode=memory_mode, label_name_map=label_name_map, **corpusargs,
         )
 
@@ -1419,7 +1457,7 @@ class TREC_50(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1494,7 +1532,7 @@ class TREC_6(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1537,6 +1575,82 @@ class TREC_6(ClassificationCorpus):
                             write_fp.write(f"{new_label} {question}\n")
 
         super(TREC_6, self).__init__(
+            data_folder, label_type='question_class', tokenizer=tokenizer, memory_mode=memory_mode, **corpusargs,
+        )
+
+
+class YAHOO_ANSWERS(ClassificationCorpus):
+    """
+    The YAHOO Question Classification Corpus, classifying questions into 10 coarse-grained answer types
+    """
+
+    def __init__(self,
+                 base_path: Union[str, Path] = None,
+                 tokenizer: Union[bool, Callable[[str], List[Token]], Tokenizer] = SpaceTokenizer(),
+                 memory_mode='partial',
+                 **corpusargs
+                 ):
+        """
+        Instantiates YAHOO Question Classification Corpus with 10 classes.
+        :param base_path: Provide this only if you store the YAHOO corpus in a specific folder, otherwise use default.
+        :param tokenizer: Custom tokenizer to use (default is SpaceTokenizer)
+        :param memory_mode: Set to 'partial' by default since this is a rather big corpus. Can also be 'full' or 'none'.
+        :param corpusargs: Other args for ClassificationCorpus.
+        """
+
+        if type(base_path) == str:
+            base_path: Path = Path(base_path)
+
+        # this dataset name
+        dataset_name = self.__class__.__name__.lower()
+
+        # default dataset folder is the cache root
+        if not base_path:
+            base_path = flair.cache_root / "datasets"
+        data_folder = base_path / dataset_name
+
+        # download data if necessary
+        url = "https://s3.amazonaws.com/fast-ai-nlp/yahoo_answers_csv.tgz"
+
+        label_map = {'1': 'Society_&_Culture',
+                     '2': 'Science_&_Mathematics',
+                     '3': 'Health',
+                     '4': 'Education_&_Reference',
+                     '5': 'Computers_&_Internet',
+                     '6': 'Sports',
+                     '7': 'Business_&_Finance',
+                     '8': 'Entertainment_&_Music',
+                     '9': 'Family_&_Relationships',
+                     '10': 'Politics_&_Government'}
+
+        original = flair.cache_root / "datasets" / dataset_name / "original"
+
+        if not (data_folder / "train.txt").is_file():
+            cached_path(url, original)
+
+
+            import tarfile
+
+            tar = tarfile.open(original / "yahoo_answers_csv.tgz", "r:gz")
+            members = []
+
+            for member in tar.getmembers():
+                if("test.csv" in member.name or "train.csv" in member.name):
+                    members.append(member)
+
+            tar.extractall(original, members=members)
+
+            for name in ["train", "test"]:
+                file = open(original / "yahoo_answers_csv" / (name+".csv"))
+                reader = csv.reader(file)
+                writer = open(data_folder / (name+".txt"), "wt", encoding="utf-8")
+                for row in reader:
+                    writer.write("__label__"+label_map.get(row[0])+" "+row[1]+"\n")
+
+                file.close()
+                writer.close()
+
+        super(YAHOO_ANSWERS, self).__init__(
             data_folder, label_type='question_type', tokenizer=tokenizer, memory_mode=memory_mode, **corpusargs,
         )
 
@@ -1571,7 +1685,7 @@ class GERMEVAL_2018_OFFENSIVE_LANGUAGE(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1651,7 +1765,7 @@ class COMMUNICATIVE_FUNCTIONS(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         original_filenames = ["background.tsv", "discussion.tsv", "introduction.tsv", "method.tsv", "result.tsv"]
@@ -1736,7 +1850,7 @@ class WASSA_ANGER(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1772,7 +1886,7 @@ class WASSA_FEAR(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1808,7 +1922,7 @@ class WASSA_JOY(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
@@ -1844,7 +1958,7 @@ class WASSA_SADNESS(ClassificationCorpus):
 
         # default dataset folder is the cache root
         if not base_path:
-            base_path = Path(flair.cache_root) / "datasets"
+            base_path = flair.cache_root / "datasets"
         data_folder = base_path / dataset_name
 
         # download data if necessary
