@@ -9,9 +9,10 @@ from torch.utils.data.dataset import Dataset
 import flair.nn
 from flair.data import Sentence
 from flair.datasets import SentenceDataset, DataLoader
-from flair.training_utils import Result, MultitaskResult
+from flair.training_utils import Result
 
 log = logging.getLogger("flair")
+
 
 class MultitaskModel(flair.nn.Model):
     """
@@ -118,7 +119,10 @@ class MultitaskModel(flair.nn.Model):
         return result, eval_loss
 
     def _get_state_dict(self):
-
+        """
+        Returns the state dict of the multitask model which has multiple models underneath.
+        :return model_state: model state for the multitask model
+        """
         model_state = {}
 
         for task in self.tasks:
@@ -129,10 +133,13 @@ class MultitaskModel(flair.nn.Model):
 
     @staticmethod
     def _init_model_with_state_dict(state):
+        """
+        Initializes the model based on given state dict.
+        """
         models = {}
 
         for task, task_state in state.items():
             models[task] = task_state["class"]._init_model_with_state_dict(task_state["state_dict"])
 
-        model = MultitaskModel(models = models)
+        model = MultitaskModel(models=models)
         return model

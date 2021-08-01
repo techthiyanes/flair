@@ -1,7 +1,7 @@
 from flair.data import Corpus, MultitaskCorpus
-from flair.datasets import CONLL_03, TREC_6, SENTEVAL_SUBJ
+from flair.datasets import UD_ENGLISH, TREC_6
 from flair.embeddings import WordEmbeddings, StackedEmbeddings, DocumentRNNEmbeddings, CharacterEmbeddings
-from flair.models.multitask_model import MultitaskModel, SequenceTaggerTask, TextClassificationTask
+from flair.models import SequenceTagger, TextClassifier, MultitaskModel
 from flair.trainers import ModelTrainer
 
 import torch.nn
@@ -23,23 +23,19 @@ Example for training a multitask model in flair. Works similarly to the usual fl
 """
 
 # ----- CORPORA -----
-conll03: Corpus = CONLL_03().downsample(0.2)
+ud_english: Corpus = UD_ENGLISH()
 trec6: Corpus = TREC_6()
-subj: Corpus = SENTEVAL_SUBJ()
 
 # ----- TAG SPACES -----
-ner_dictionary = conll03.make_tag_dictionary('ner')
-pos_dictionary = conll03.make_tag_dictionary('pos')
-trec_dictionary = trec6.make_label_dictionary()
-subj_dictionary = subj.make_label_dictionary()
+upos_dictionary = ud_english.make_tag_dictionary('upos')
+trec_dictionary = trec6.make_label_dictionary("question_class")
 
 # ----- SHARED WORD EMBEDDING LAYER -----
 shared_word_embeddings = [WordEmbeddings('glove'), CharacterEmbeddings()]
-shared_word_embedding_layer: StackedEmbeddings = StackedEmbeddings(embeddings=shared_word_embeddings) # Stack if necessary
+shared_word_embedding_layer: StackedEmbeddings = StackedEmbeddings(embeddings=shared_word_embeddings)
 
 # ----- SHARED RNN LAYERS -----
 shared_rnn_layer_classification: DocumentRNNEmbeddings = DocumentRNNEmbeddings(shared_word_embedding_layer)
-shared_rnn_layer_classification2: DocumentRNNEmbeddings = DocumentRNNEmbeddings(shared_word_embedding_layer)
 shared_rnn_layer_labeling: torch.nn.Module = torch.nn.LSTM(input_size=shared_word_embedding_layer.embedding_length,
                                                            hidden_size=256,
                                                            num_layers=2,
@@ -47,30 +43,20 @@ shared_rnn_layer_labeling: torch.nn.Module = torch.nn.LSTM(input_size=shared_wor
                                                            batch_first=True)
 
 # ----- TASKS -----
-ner_tagger: SequenceTaggerTask = SequenceTaggerTask(embeddings=shared_word_embedding_layer,
-                                                    tag_dictionary=ner_dictionary,
-                                                    tag_type='ner',
-                                                    rnn=shared_rnn_layer_labeling,
-                                                    use_crf=True)
+upos_tagger: SequenceTagger = SequenceTagger(embeddings=shared_word_embedding_layer,
+                                             tag_dictionary=upos_dictionary,
+                                             tag_type='ner',
+                                             rnn=shared_rnn_layer_labeling,
+                                             use_crf=True)
 
-pos_tagger: SequenceTaggerTask = SequenceTaggerTask(embeddings=shared_word_embedding_layer,
-                                                    tag_dictionary=pos_dictionary,
-                                                    tag_type='pos',
-                                                    use_rnn=True,
-                                                    use_crf=True)
+trec_classifier: TextClassifier = TextClassifier(shared_rnn_layer_classification,
+                                                 label_dictionary=trec_dictionary)
 
-trec_classifier: TextClassificationTask = TextClassificationTask(shared_rnn_layer_classification,
-                                                                 label_dictionary=trec_dictionary)
-
-subj_classifier: TextClassificationTask = TextClassificationTask(shared_rnn_layer_classification2,
-                                                                 label_dictionary=subj_dictionary)
 
 # ----- MULTITASK CORPUS -----
 multi_corpus = MultitaskCorpus(
     {"corpus": trec6, "model": trec_classifier},
-    {"corpus": subj, "model": subj_classifier},
-    {"corpus": conll03, "model": ner_tagger},
-    {"corpus": conll03, "model": pos_tagger}
+    {"corpus": ud_english, "model": upos_tagger},
 )
 
 # ----- MULTITASK MODEL -----
