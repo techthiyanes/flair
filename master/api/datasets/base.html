@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>flair.datasets.base &#8212; flair 0.13.0 documentation</title>
+    <title>flair.datasets.base &#8212; flair 0.13.1 documentation</title>
   
   
   
@@ -36,7 +36,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=f17e68eb"></script>
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=583e1c8d"></script>
     <script src="../../_static/doctools.js?v=888ff710"></script>
     <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../../_static/design-tabs.js?v=36754332"></script>
@@ -107,7 +107,7 @@
   
   
   
-    <p class="title logo__title">flair 0.13.0 documentation</p>
+    <p class="title logo__title">flair 0.13.1 documentation</p>
   
 </a></div>
     
@@ -553,7 +553,7 @@ document.write(`
 <dd><p>Instantiate FlairDatapointDataset.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>datapoints</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeVar</span></code>(<code class="docutils literal notranslate"><span class="pre">DT</span></code>, bound= <a class="reference internal" href="../flair.data.html#flair.data.DataPoint" title="flair.data.DataPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataPoint</span></code></a>), <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeVar</span></code>(<code class="docutils literal notranslate"><span class="pre">DT</span></code>, bound= <a class="reference internal" href="../flair.data.html#flair.data.DataPoint" title="flair.data.DataPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataPoint</span></code></a>)]]) – DT or List of DT that make up FlairDatapointDataset</p>
+<dd class="field-odd"><p><strong>datapoints</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeVar</span></code>(<code class="docutils literal notranslate"><span class="pre">DT</span></code>, bound= <a class="reference internal" href="../flair.data.html#flair.data.DataPoint" title="flair.data.DataPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataPoint</span></code></a>), <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">TypeVar</span></code>(<code class="docutils literal notranslate"><span class="pre">DT</span></code>, bound= <a class="reference internal" href="../flair.data.html#flair.data.DataPoint" title="flair.data.DataPoint"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataPoint</span></code></a>)]]</span>) – DT or List of DT that make up FlairDatapointDataset</p>
 </dd>
 </dl>
 </dd></dl>
@@ -563,7 +563,7 @@ document.write(`
 <span class="sig-name descname"><span class="pre">is_in_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/flairNLP/flair/blob/master/flair/datasets/base.py#L55-L56"><span class="linkcode-link"><span class="pre">View</span> <span class="pre">on</span> <span class="pre">GitHub</span></span></a><a class="headerlink" href="#flair.datasets.base.FlairDatapointDataset.is_in_memory" title="Permalink to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -597,8 +597,8 @@ document.write(`
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>texts</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]) – a string or List of string that make up StringDataset</p></li>
-<li><p><strong>use_tokenizer</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>, <a class="reference internal" href="../flair.tokenization.html#flair.tokenization.Tokenizer" title="flair.tokenization.Tokenizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tokenizer</span></code></a>]) – Custom tokenizer to use. If instead of providing a function, this parameter is just set to True,
+<li><p><strong>texts</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]</span>) – a string or List of string that make up StringDataset</p></li>
+<li><p><strong>use_tokenizer</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Union</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>, <a class="reference internal" href="../flair.tokenization.html#flair.tokenization.Tokenizer" title="flair.tokenization.Tokenizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tokenizer</span></code></a>]</span>) – Custom tokenizer to use. If instead of providing a function, this parameter is just set to True,
 <code class="xref py py-class docutils literal notranslate"><span class="pre">flair.tokenization.SegTokTokenizer</span></code> will be used.</p></li>
 </ul>
 </dd>
@@ -610,7 +610,7 @@ document.write(`
 <em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_in_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/flairNLP/flair/blob/master/flair/datasets/base.py#L93-L95"><span class="linkcode-link"><span class="pre">View</span> <span class="pre">on</span> <span class="pre">GitHub</span></span></a><a class="headerlink" href="#flair.datasets.base.StringDataset.is_in_memory" title="Permalink to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -637,19 +637,19 @@ document.write(`
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Query, e.g. {‘Län’: ‘Stockholms län’}</p></li>
-<li><p><strong>host</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Host, e.g. ‘localhost’,</p></li>
-<li><p><strong>port</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Port, e.g. 27017</p></li>
-<li><p><strong>database</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Database, e.g. ‘rosenberg’,</p></li>
-<li><p><strong>collection</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Collection, e.g. ‘book’,</p></li>
-<li><p><strong>text_field</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Text field, e.g. ‘Beskrivning’,</p></li>
-<li><p><strong>categories_field</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]) – List of category fields, e.g [‘Län’, ‘Härad’, ‘Tingslag’, ‘Församling’, ‘Plats’],</p></li>
-<li><p><strong>max_tokens_per_doc</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Takes at most this amount of tokens per document. If set to -1 all documents are taken as is.</p></li>
+<li><p><strong>query</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – Query, e.g. {‘Län’: ‘Stockholms län’}</p></li>
+<li><p><strong>host</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – Host, e.g. ‘localhost’,</p></li>
+<li><p><strong>port</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></span>) – Port, e.g. 27017</p></li>
+<li><p><strong>database</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – Database, e.g. ‘rosenberg’,</p></li>
+<li><p><strong>collection</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – Collection, e.g. ‘book’,</p></li>
+<li><p><strong>text_field</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – Text field, e.g. ‘Beskrivning’,</p></li>
+<li><p><strong>categories_field</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]]</span>) – List of category fields, e.g [‘Län’, ‘Härad’, ‘Tingslag’, ‘Församling’, ‘Plats’],</p></li>
+<li><p><strong>max_tokens_per_doc</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></span>) – Takes at most this amount of tokens per document. If set to -1 all documents are taken as is.</p></li>
 <li><p><strong>max_tokens_per_doc</strong> – If set, truncates each Sentence to a maximum number of Tokens</p></li>
-<li><p><strong>max_chars_per_doc</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – If set, truncates each Sentence to a maximum number of chars</p></li>
-<li><p><strong>tokenizer</strong> (<a class="reference internal" href="../flair.tokenization.html#flair.tokenization.Tokenizer" title="flair.tokenization.Tokenizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tokenizer</span></code></a>) – Custom tokenizer to use (default SegtokTokenizer)</p></li>
-<li><p><strong>in_memory</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If True, keeps dataset as Sentences in memory, otherwise only keeps strings</p></li>
-<li><p><strong>tag_type</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – The tag type to assign labels to.</p></li>
+<li><p><strong>max_chars_per_doc</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></span>) – If set, truncates each Sentence to a maximum number of chars</p></li>
+<li><p><strong>tokenizer</strong> (<span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="../flair.tokenization.html#flair.tokenization.Tokenizer" title="flair.tokenization.Tokenizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Tokenizer</span></code></a></span>) – Custom tokenizer to use (default SegtokTokenizer)</p></li>
+<li><p><strong>in_memory</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></span>) – If True, keeps dataset as Sentences in memory, otherwise only keeps strings</p></li>
+<li><p><strong>tag_type</strong> (<span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span>) – The tag type to assign labels to.</p></li>
 </ul>
 </dd>
 </dl>
@@ -661,7 +661,7 @@ document.write(`
 <span class="sig-name descname"><span class="pre">is_in_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/flairNLP/flair/blob/master/flair/datasets/base.py#L215-L216"><span class="linkcode-link"><span class="pre">View</span> <span class="pre">on</span> <span class="pre">GitHub</span></span></a><a class="headerlink" href="#flair.datasets.base.MongoDataset.is_in_memory" title="Permalink to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></p>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></span></p>
 </dd>
 </dl>
 </dd></dl>
