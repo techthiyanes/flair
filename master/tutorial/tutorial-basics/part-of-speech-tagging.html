@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Tagging parts-of-speech &#8212; flair 0.13.1 documentation</title>
+    <title>Tagging parts-of-speech &#8212; flair 0.14.0 documentation</title>
   
   
   
@@ -36,7 +36,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=583e1c8d"></script>
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=14605f76"></script>
     <script src="../../_static/doctools.js?v=888ff710"></script>
     <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../../_static/design-tabs.js?v=36754332"></script>
@@ -45,7 +45,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="Tagging other things" href="other-models.html" />
-    <link rel="prev" title="Tagging and linking entities" href="entity-linking.html" />
+    <link rel="prev" title="Using and creating entity mention linker" href="entity-mention-linking.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -107,7 +107,7 @@
   
   
   
-    <p class="title logo__title">flair 0.13.1 documentation</p>
+    <p class="title logo__title">flair 0.14.0 documentation</p>
   
 </a></div>
     
@@ -396,6 +396,7 @@ document.write(`
 <li class="toctree-l3"><a class="reference internal" href="tagging-entities.html">Tagging entities</a></li>
 <li class="toctree-l3"><a class="reference internal" href="tagging-sentiment.html">Tagging sentiment</a></li>
 <li class="toctree-l3"><a class="reference internal" href="entity-linking.html">Tagging and linking entities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="entity-mention-linking.html">Using and creating entity mention linker</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Tagging parts-of-speech</a></li>
 <li class="toctree-l3"><a class="reference internal" href="other-models.html">Tagging other things</a></li>
 <li class="toctree-l3"><a class="reference internal" href="how-to-tag-corpus.html">How to tag a whole corpus</a></li>
@@ -403,6 +404,7 @@ document.write(`
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorial-training/index.html">Tutorial 2: Training models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorial-embeddings/index.html">Tutorial 3: Embeddings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorial-hunflair2/index.html">Tutorial: HunFlair2</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API reference</a></li>
@@ -579,8 +581,8 @@ document.write(`
 </div>
 </section>
 </section>
-<section id="tagging-universal-parts-of-speech-upos">
-<h2>Tagging universal parts-of-speech (uPoS)​<a class="headerlink" href="#tagging-universal-parts-of-speech-upos" title="Permalink to this heading">#</a></h2>
+<section id="tagging-parts-of-speech-in-any-language">
+<h2>Tagging parts-of-speech in any language<a class="headerlink" href="#tagging-parts-of-speech-in-any-language" title="Permalink to this heading">#</a></h2>
 <p>Universal parts-of-speech are a set of minimal syntactic units that exist across languages. For instance, most languages
 will have VERBs or NOUNs.</p>
 <p>We ship models trained over 14 langages to tag upos in <strong>multilingual text</strong>. Use like this:</p>
@@ -742,12 +744,12 @@ will have VERBs or NOUNs.</p>
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="entity-linking.html"
+       href="entity-mention-linking.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Tagging and linking entities</p>
+        <p class="prev-next-title">Using and creating entity mention linker</p>
       </div>
     </a>
     <a class="right-next"
@@ -784,7 +786,7 @@ will have VERBs or NOUNs.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#in-arabic">… in Arabic</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tagging-universal-parts-of-speech-upos">Tagging universal parts-of-speech (uPoS)​</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tagging-parts-of-speech-in-any-language">Tagging parts-of-speech in any language</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#list-of-pos-models">List of POS Models</a></li>
 </ul>
   </nav></div>

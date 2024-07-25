@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Docs &#8212; flair 0.13.1 documentation</title>
+    <title>API Docs &#8212; flair 0.14.0 documentation</title>
   
   
   
@@ -36,7 +36,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=583e1c8d"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=14605f76"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/design-tabs.js?v=36754332"></script>
@@ -45,7 +45,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="flair" href="flair.html" />
-    <link rel="prev" title="Other embeddings in Flair" href="../tutorial/tutorial-embeddings/other-embeddings.html" />
+    <link rel="prev" title="HunFlair2 Tutorial 4: Customizing linking models" href="../tutorial/tutorial-hunflair2/customize-linking.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -107,7 +107,7 @@
   
   
   
-    <p class="title logo__title">flair 0.13.1 documentation</p>
+    <p class="title logo__title">flair 0.14.0 documentation</p>
   
 </a></div>
     
@@ -488,11 +488,13 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Dictionary"><code class="docutils literal notranslate"><span class="pre">Dictionary</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Label"><code class="docutils literal notranslate"><span class="pre">Label</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.DataPoint"><code class="docutils literal notranslate"><span class="pre">DataPoint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.EntityCandidate"><code class="docutils literal notranslate"><span class="pre">EntityCandidate</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Token"><code class="docutils literal notranslate"><span class="pre">Token</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Span"><code class="docutils literal notranslate"><span class="pre">Span</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Relation"><code class="docutils literal notranslate"><span class="pre">Relation</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Sentence"><code class="docutils literal notranslate"><span class="pre">Sentence</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.DataPair"><code class="docutils literal notranslate"><span class="pre">DataPair</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.DataTriple"><code class="docutils literal notranslate"><span class="pre">DataTriple</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Image"><code class="docutils literal notranslate"><span class="pre">Image</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.Corpus"><code class="docutils literal notranslate"><span class="pre">Corpus</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.data.html#flair.data.MultiCorpus"><code class="docutils literal notranslate"><span class="pre">MultiCorpus</span></code></a></li>
@@ -526,15 +528,18 @@ document.write(`
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="flair.models.html">flair.models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.EntityMentionLinker"><code class="docutils literal notranslate"><span class="pre">EntityMentionLinker</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.SpanClassifier"><code class="docutils literal notranslate"><span class="pre">SpanClassifier</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.LanguageModel"><code class="docutils literal notranslate"><span class="pre">LanguageModel</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.Lemmatizer"><code class="docutils literal notranslate"><span class="pre">Lemmatizer</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.TextPairClassifier"><code class="docutils literal notranslate"><span class="pre">TextPairClassifier</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.TextTripleClassifier"><code class="docutils literal notranslate"><span class="pre">TextTripleClassifier</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.TextPairRegressor"><code class="docutils literal notranslate"><span class="pre">TextPairRegressor</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.RelationClassifier"><code class="docutils literal notranslate"><span class="pre">RelationClassifier</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.RelationExtractor"><code class="docutils literal notranslate"><span class="pre">RelationExtractor</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.RegexpTagger"><code class="docutils literal notranslate"><span class="pre">RegexpTagger</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.SequenceTagger"><code class="docutils literal notranslate"><span class="pre">SequenceTagger</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.PrefixedSequenceTagger"><code class="docutils literal notranslate"><span class="pre">PrefixedSequenceTagger</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.TokenClassifier"><code class="docutils literal notranslate"><span class="pre">TokenClassifier</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.WordTagger"><code class="docutils literal notranslate"><span class="pre">WordTagger</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="flair.models.html#flair.models.FewshotClassifier"><code class="docutils literal notranslate"><span class="pre">FewshotClassifier</span></code></a></li>
@@ -618,12 +623,12 @@ document.write(`
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../tutorial/tutorial-embeddings/other-embeddings.html"
+       href="../tutorial/tutorial-hunflair2/customize-linking.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Other embeddings in Flair</p>
+        <p class="prev-next-title">HunFlair2 Tutorial 4: Customizing linking models</p>
       </div>
     </a>
     <a class="right-next"
